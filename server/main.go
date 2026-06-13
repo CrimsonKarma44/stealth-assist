@@ -13,6 +13,10 @@ type AskRequest struct {
 	Messages []llm.Message `json:"messages"`
 }
 
+type ScreenshotRequest struct {
+	Image string `json:"image"`
+}
+
 type AskResponse struct {
 	Reply string `json:"reply"`
 }
@@ -55,12 +59,36 @@ func handleAsk(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(AskResponse{Reply: reply})
 }
 
+func handleScreenshot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req ScreenshotRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Image == "" {
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+
+	reply, err := llm.AskVision(req.Image)
+	if err != nil {
+		log.Printf("Vision error: %v", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(AskResponse{Reply: reply})
+}
+
 func main() {
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
 		log.Println("Warning: ANTHROPIC_API_KEY is not set")
 	}
 
 	http.HandleFunc("/api/ask", enableCORS(handleAsk))
+	http.HandleFunc("/api/screenshot", enableCORS(handleScreenshot))
 
 	log.Println("Listening on :8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {

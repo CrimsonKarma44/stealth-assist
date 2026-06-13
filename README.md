@@ -1,17 +1,18 @@
 # Stealth Assist
 
-A Chrome extension + local Go backend that bypasses tab-visibility and focus-detection used by proctoring software, and gives you a private AI assistant (Claude) accessible via a keyboard shortcut on any page.
+A Chrome extension + local Go backend that bypasses tab-visibility and focus-detection used by proctoring software, and gives you a private Claude AI assistant accessible via keyboard shortcuts on any page.
 
 ## How it works
 
 ```
 Chrome Extension (MV3)
   ├── inject.ts    → spoofs visibility/focus APIs in the page's own JS context
-  ├── ui.ts        → draggable chat overlay (Ctrl+Shift+X)
+  ├── ui.ts        → draggable chat overlay (Ctrl+Shift+X) + Snap button
   └── background.ts → holds conversation history, proxies requests to Go server
 
 Go Server (localhost:8080)
-  └── proxies messages to Anthropic Claude API (API key never touches the browser)
+  ├── /api/ask        → text chat with conversation memory
+  └── /api/screenshot → vision mode via Claude multimodal API
 ```
 
 ### Stealth layer
@@ -38,9 +39,20 @@ Press **Ctrl+Shift+X** on any page to open the assistant:
 
 Responses are rendered as markdown (code blocks, bold, lists, etc.).
 
+### Screenshot / vision mode
+
+Two ways to capture the screen and ask Claude what's on it:
+
+| Method | Trigger | How it works |
+|---|---|---|
+| **Keyboard** | **Ctrl+Shift+Z** (Mac: Cmd+Shift+Z) | Manifest command fires directly in the background service worker, preserving the user-gesture context Chrome requires for `captureVisibleTab`. |
+| **Snap button** | Click **Snap** in the overlay | Content script sends a `SCREENSHOT_ASK` message; the `<all_urls>` host permission grants `captureVisibleTab` access without needing a user gesture. |
+
+In both cases the overlay is hidden before capture (so it doesn't appear in the screenshot), then restored with Claude's answer once the server responds. Claude reads every question visible on screen and numbers its answers to match.
+
 ### Conversation memory
 
-The background service worker maintains a rolling message history. Every turn is sent to the server so Claude can answer follow-up questions with full context. Memory is held in service-worker RAM — never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it.
+The background service worker maintains a rolling message history for text chat. Every turn is sent to the server so Claude can answer follow-up questions with full context. Memory is held in service-worker RAM — never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it. Screenshot responses are standalone (not added to the chat history).
 
 ---
 
@@ -52,7 +64,7 @@ The background service worker maintains a rolling message history. Every turn is
 cd server
 ```
 
-Create `server/.env` (already present if cloned; never commit this file):
+Create `server/.env` (never commit this file):
 ```
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
@@ -79,6 +91,16 @@ Load in Chrome:
 
 After any code change, run `npm run build` then click the **refresh icon** on the extension card. Refresh the target tab too so the new content scripts are injected.
 
+### 3. Screenshot shortcut
+
+After loading the extension, Chrome may assign the `Ctrl+Shift+Z` shortcut automatically. If it conflicts with another extension, go to:
+
+```
+chrome://extensions/shortcuts
+```
+
+Find **Stealth Assist → Capture screen and ask Claude** and reassign if needed.
+
 ---
 
 ## Project structure
@@ -89,16 +111,17 @@ by-pass_plugin/
 │   ├── src/
 │   │   ├── content/
 │   │   │   ├── inject.ts      # MAIN world spoof script
-│   │   │   └── ui.ts          # Chat overlay UI
+│   │   │   └── ui.ts          # Chat overlay UI + Snap button
 │   │   └── background/
-│   │       └── background.ts  # Service worker + conversation history
+│   │       └── background.ts  # Service worker, history, screenshot capture
 │   ├── public/
-│   │   └── manifest.json
+│   │   ├── manifest.json      # MV3 manifest with commands + <all_urls>
+│   │   └── icons/             # icon16/32/48/128.png
 │   └── vite.config.ts
 └── server/
-    ├── main.go                # HTTP server, CORS, request routing
+    ├── main.go                # HTTP server, CORS, /api/ask + /api/screenshot
     ├── llm/
-    │   └── client.go          # Anthropic API client, system prompt
+    │   └── client.go          # Anthropic API client (text + vision)
     └── .env                   # ANTHROPIC_API_KEY (not committed)
 ```
 
@@ -115,6 +138,12 @@ by-pass_plugin/
 
 ---
 
-## Roadmap
+## Permissions
 
-- [ ] Screenshot / vision mode — `chrome.tabs.captureVisibleTab` for canvas-based exam platforms (requires `tabs` permission)
+| Permission | Why |
+|---|---|
+| `activeTab` | Access the active tab's metadata |
+| `tabs` | Query active tab for screenshot capture |
+| `scripting` | Inject content scripts programmatically |
+| `storage` | Extension settings (future use) |
+| `<all_urls>` host permission | Required for `captureVisibleTab` on the Snap button path (no user gesture in message channel) |

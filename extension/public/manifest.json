@@ -20,12 +20,22 @@
   },
   "permissions": [
     "activeTab",
+    "tabs",
     "scripting",
     "storage"
   ],
   "host_permissions": [
-    "*://*/*"
+    "<all_urls>"
   ],
+  "commands": {
+    "screenshot": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Z",
+        "mac": "Command+Shift+Z"
+      },
+      "description": "Capture screen and ask Claude"
+    }
+  },
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

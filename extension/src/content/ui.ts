@@ -177,8 +177,17 @@ function buildOverlay() {
   clearBtn.textContent = 'Clear';
   clearBtn.style.cssText = copyBtn.style.cssText;
 
+  const snapBtn = document.createElement('button');
+  snapBtn.textContent = 'Snap';
+  snapBtn.title = 'Capture screen and ask Claude (Ctrl+Shift+Z)';
+  snapBtn.style.cssText = `
+    background:none;border:1px solid #2d2d3a;border-radius:5px;
+    color:#60a5fa;cursor:pointer;font-size:11px;padding:3px 10px;
+  `;
+
   actionBar.appendChild(copyBtn);
   actionBar.appendChild(clearBtn);
+  actionBar.appendChild(snapBtn);
 
   // Input row
   const inputRow = document.createElement('div');
@@ -299,6 +308,44 @@ function buildOverlay() {
   inputEl.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); }
   });
+
+  snapBtn.onclick = () => takeScreenshot();
+}
+
+// ── Screenshot capture ─────────────────────────────────────────────────────
+async function takeScreenshot() {
+  // Hide overlay so it doesn't appear in the capture
+  if (overlay) overlay.style.visibility = 'hidden';
+
+  // Two rAF cycles guarantee the browser has repainted before we capture
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+
+  try {
+    const res = await chrome.runtime.sendMessage({ type: 'SCREENSHOT_ASK' });
+
+    // Ensure overlay is built and visible
+    if (!overlay) buildOverlay();
+    overlay!.style.visibility = 'visible';
+    if (minimized) setMinimized(false);
+
+    if (res?.reply) {
+      appendMessage('assistant', res.reply);
+    } else {
+      const errEl = document.createElement('div');
+      errEl.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:10px;';
+      errEl.textContent = 'Snap error: ' + (res?.error ?? 'unknown');
+      chatEl!.appendChild(errEl);
+      chatEl!.scrollTop = chatEl!.scrollHeight;
+    }
+  } catch (err: any) {
+    if (!overlay) buildOverlay();
+    overlay!.style.visibility = 'visible';
+    if (minimized) setMinimized(false);
+    const errEl = document.createElement('div');
+    errEl.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:10px;';
+    errEl.textContent = 'Snap error: ' + err.message;
+    if (chatEl) { chatEl.appendChild(errEl); chatEl.scrollTop = chatEl.scrollHeight; }
+  }
 }
 
 // ── Global shortcut ────────────────────────────────────────────────────────
@@ -322,4 +369,30 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
 
   inputEl?.focus();
   if (inputEl) inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+});
+
+// ── Messages from background (manifest command path) ──────────────────────
+chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  // Background asks us to hide overlay before it captures the tab
+  if (msg.type === 'SNAP_HIDE') {
+    if (overlay) overlay.style.visibility = 'hidden';
+    // Confirm after two paint cycles so the hide is committed before capture
+    requestAnimationFrame(() => requestAnimationFrame(() => sendResponse({ ok: true })));
+    return true; // async response
+  }
+
+  // Background delivers the screenshot answer
+  if (msg.type === 'SNAP_RESPONSE') {
+    if (!overlay) buildOverlay();
+    overlay!.style.visibility = 'visible';
+    if (minimized) setMinimized(false);
+    if (msg.reply) {
+      appendMessage('assistant', msg.reply);
+    } else {
+      const errEl = document.createElement('div');
+      errEl.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:10px;';
+      errEl.textContent = 'Snap error: ' + (msg.error ?? 'unknown');
+      if (chatEl) { chatEl.appendChild(errEl); chatEl.scrollTop = chatEl.scrollHeight; }
+    }
+  }
 });
