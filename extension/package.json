@@ -1,0 +1,17 @@
+{
+  "name": "stealth-assist",
+  "version": "1.0.0",
+  "description": "Stealth Assist Extension",
+  "scripts": {
+    "build": "vite build",
+    "watch": "vite build --watch"
+  },
+  "dependencies": {
+    "marked": "^18.0.5"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0"
+  }
+}
