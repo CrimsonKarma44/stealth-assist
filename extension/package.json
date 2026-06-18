@@ -1,9 +1,11 @@
 {
   "name": "stealth-assist",
   "version": "1.0.0",
+  "type": "module",
   "description": "Stealth Assist Extension",
   "scripts": {
     "build": "vite build",
+    "build:firefox": "vite build && node scripts/patch-firefox-manifest.js",
     "watch": "vite build --watch"
   },
   "dependencies": {
