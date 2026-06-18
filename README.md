@@ -75,8 +75,7 @@ Server listens on `http://localhost:8080`. Keep it running while using the exten
 1. Push the repo to GitHub
 2. Render dashboard → **New → Web Service** → connect the repo
 3. Render auto-detects `server/render.yaml` — root dir `server`, build `go build -o server_bin main.go`, no env vars to set
-4. Copy the deployed URL (e.g. `https://stealth-assist-xxxx.onrender.com`)
-5. Paste it into **Settings → Server URL** in the extension
+4. Deploy — the extension already defaults to `https://stealth-assist.onrender.com`
 
 > **Render free tier note:** web services spin down after 15 minutes of inactivity, causing a ~30s cold start on the next request. The $7/month paid tier keeps the service always-on.
 
@@ -113,7 +112,7 @@ On first install the settings page opens automatically. You can also reach it an
 - The **⚙** button in the chat overlay
 - Right-clicking the extension icon → **Options**
 
-Set the **Server URL** if using Render (leave blank for local). Then pick a provider and paste your API key.
+The extension defaults to `https://stealth-assist.onrender.com`. If running the server locally, change **Server URL** to `http://localhost:8080`. Then pick a provider and paste your API key.
 
 | Provider | Free tier | Where to get a key |
 |---|---|---|
