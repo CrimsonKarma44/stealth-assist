@@ -1,18 +1,19 @@
 # Stealth Assist
 
-A Chrome extension + local Go backend that bypasses tab-visibility and focus-detection used by proctoring software, and gives you a private Claude AI assistant accessible via keyboard shortcuts on any page.
+A Chrome/Firefox extension + local Go backend that bypasses tab-visibility and focus-detection used by proctoring software, and gives you a private AI assistant accessible via keyboard shortcuts on any page. Supports Anthropic Claude, OpenAI, and Google Gemini.
 
 ## How it works
 
 ```
-Chrome Extension (MV3)
-  ├── inject.ts    → spoofs visibility/focus APIs in the page's own JS context
-  ├── ui.ts        → draggable chat overlay (Ctrl+Shift+X) + Snap button
-  └── background.ts → holds conversation history, proxies requests to Go server
+Browser Extension (MV3 — Chrome + Firefox)
+  ├── inject.ts      → spoofs visibility/focus APIs in the page's own JS context
+  ├── ui.ts          → draggable chat overlay (Ctrl+Shift+X) + Snap button
+  ├── background.ts  → holds conversation history, proxies requests to Go server
+  └── options.ts     → settings page (provider, model, API key)
 
 Go Server (localhost:8080)
   ├── /api/ask        → text chat with conversation memory
-  └── /api/screenshot → vision mode via Claude multimodal API
+  └── /api/screenshot → vision mode (screenshot analysis)
 ```
 
 ### Stealth layer
@@ -25,6 +26,8 @@ Go Server (localhost:8080)
 - `document.fullscreenElement` → mock element
 - `EventTarget.prototype.addEventListener` → silently drops `visibilitychange`, `blur`, and `focusout` event registrations
 
+> **Firefox note:** the MAIN world injection doesn't work on Firefox (stripped at build time), so the spoofing layer is Chrome/Chromium only. The chat overlay and screenshot features work on both.
+
 ### Chat overlay
 
 Press **Ctrl+Shift+X** on any page to open the assistant:
@@ -34,25 +37,26 @@ Press **Ctrl+Shift+X** on any page to open the assistant:
 - **Enter** sends · **Shift+Enter** adds a newline
 - Drag the header to reposition the overlay anywhere on screen
 - **−** minimizes to a title bar; **Ctrl+Shift+X** un-minimizes
-- **Copy** — copies Claude's last reply to clipboard
+- **⚙** opens the settings page to switch provider or update your key
+- **Copy** — copies the last reply to clipboard
 - **Clear** — wipes the chat and resets conversation memory
 
 Responses are rendered as markdown (code blocks, bold, lists, etc.).
 
 ### Screenshot / vision mode
 
-Two ways to capture the screen and ask Claude what's on it:
+Two ways to capture the screen and ask the AI what's on it:
 
 | Method | Trigger | How it works |
 |---|---|---|
-| **Keyboard** | **Ctrl+Shift+Z** (Mac: Cmd+Shift+Z) | Manifest command fires directly in the background service worker, preserving the user-gesture context Chrome requires for `captureVisibleTab`. |
+| **Keyboard** | **Ctrl+Shift+Z** (Mac: Cmd+Shift+Z) | Manifest command fires directly in the background service worker, preserving the user-gesture context required for `captureVisibleTab`. |
 | **Snap button** | Click **Snap** in the overlay | Content script sends a `SCREENSHOT_ASK` message; the `<all_urls>` host permission grants `captureVisibleTab` access without needing a user gesture. |
 
-In both cases the overlay is hidden before capture (so it doesn't appear in the screenshot), then restored with Claude's answer once the server responds. Claude reads every question visible on screen and numbers its answers to match.
+In both cases the overlay is hidden before capture, then restored with the AI's answer. The model reads every question visible on screen and numbers its answers to match.
 
 ### Conversation memory
 
-The background service worker maintains a rolling message history for text chat. Every turn is sent to the server so Claude can answer follow-up questions with full context. Memory is held in service-worker RAM — never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it. Screenshot responses are standalone (not added to the chat history).
+The background service worker maintains a rolling message history for text chat. Every turn is sent to the server so the model can answer follow-up questions with full context. Memory is held in service-worker RAM — never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it. Screenshot responses are standalone (not added to history).
 
 ---
 
@@ -62,19 +66,12 @@ The background service worker maintains a rolling message history for text chat.
 
 ```bash
 cd server
-```
-
-Create `server/.env` (never commit this file):
-```
-export ANTHROPIC_API_KEY=sk-ant-...
-```
-
-Run:
-```bash
-source .env && go run main.go
+go run main.go
 ```
 
 Server listens on `http://localhost:8080`. Keep it running while using the extension.
+
+> The server no longer requires an `.env` file — API keys are configured in the extension settings page and sent per request. If you prefer the old approach, you can still set `ANTHROPIC_API_KEY` in the environment and it will be used as a fallback when no key is provided by the extension.
 
 ### 2. Extension
 
@@ -103,15 +100,29 @@ Load:
 
 After any code change, re-run the appropriate build command and click **Refresh** on the extension card.
 
-### 3. Screenshot shortcut
+### 3. Configure your API key
 
-After loading the extension, Chrome may assign the `Ctrl+Shift+Z` shortcut automatically. If it conflicts with another extension, go to:
+On first install the settings page opens automatically. You can also reach it any time via:
+- The **⚙** button in the chat overlay
+- Right-clicking the extension icon → **Options**
+
+| Provider | Free tier | Where to get a key |
+|---|---|---|
+| **Google Gemini** | ✓ No credit card required | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| **Anthropic Claude** | Paid | [console.anthropic.com](https://console.anthropic.com/) |
+| **OpenAI** | Paid | [platform.openai.com](https://platform.openai.com/api-keys) |
+
+Select your provider, pick a model, paste the key, click **Save**. Use **Test connection** to verify before closing the page.
+
+### 4. Screenshot shortcut
+
+After loading the extension, Chrome may assign the `Ctrl+Shift+Z` shortcut automatically. If it conflicts with another extension, reassign it at:
 
 ```
 chrome://extensions/shortcuts
 ```
 
-Find **Stealth Assist → Capture screen and ask Claude** and reassign if needed.
+Find **Stealth Assist → Capture screen and ask Claude**.
 
 ---
 
@@ -122,19 +133,24 @@ by-pass_plugin/
 ├── extension/
 │   ├── src/
 │   │   ├── content/
-│   │   │   ├── inject.ts      # MAIN world spoof script
-│   │   │   └── ui.ts          # Chat overlay UI + Snap button
-│   │   └── background/
-│   │       └── background.ts  # Service worker, history, screenshot capture
+│   │   │   ├── inject.ts      # MAIN world spoof script (Chrome only)
+│   │   │   └── ui.ts          # Chat overlay UI + Snap button + gear icon
+│   │   ├── background/
+│   │   │   └── background.ts  # Service worker, history, screenshot, settings relay
+│   │   └── options/
+│   │       └── options.ts     # Settings page logic
 │   ├── public/
-│   │   ├── manifest.json      # MV3 manifest with commands + <all_urls>
-│   │   └── icons/             # icon16/32/48/128.png
+│   │   ├── manifest.json      # MV3 manifest
+│   │   ├── src/
+│   │   │   └── options.html   # Settings page HTML
+│   │   └── icons/
+│   ├── scripts/
+│   │   └── patch-firefox-manifest.js
 │   └── vite.config.ts
 └── server/
     ├── main.go                # HTTP server, CORS, /api/ask + /api/screenshot
-    ├── llm/
-    │   └── client.go          # Anthropic API client (text + vision)
-    └── .env                   # ANTHROPIC_API_KEY (not committed)
+    └── llm/
+        └── client.go          # Multi-provider LLM client (Anthropic, OpenAI, Gemini)
 ```
 
 ---
@@ -146,7 +162,7 @@ by-pass_plugin/
 | Build extension (Chrome) | `cd extension && npm run build` |
 | Build extension (Firefox) | `cd extension && npm run build:firefox` |
 | Watch mode (auto-rebuild) | `cd extension && npm run watch` |
-| Run server | `cd server && source .env && go run main.go` |
+| Run server | `cd server && go run main.go` |
 | Compile server binary | `cd server && go build -o server_bin main.go` |
 
 ---
@@ -158,5 +174,5 @@ by-pass_plugin/
 | `activeTab` | Access the active tab's metadata |
 | `tabs` | Query active tab for screenshot capture |
 | `scripting` | Inject content scripts programmatically |
-| `storage` | Extension settings (future use) |
+| `storage` | Store API key and provider settings locally |
 | `<all_urls>` host permission | Required for `captureVisibleTab` on the Snap button path (no user gesture in message channel) |

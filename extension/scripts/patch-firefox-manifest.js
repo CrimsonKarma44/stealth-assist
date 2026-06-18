@@ -3,13 +3,9 @@ import { readFileSync, writeFileSync } from 'fs';
 const path = new URL('../dist/manifest.json', import.meta.url).pathname;
 const manifest = JSON.parse(readFileSync(path, 'utf8'));
 
-// Firefox MV3 uses background.scripts[] instead of background.service_worker.
-// persistent: true keeps the background page alive — without it Firefox suspends
-// it when idle, wiping conversation history and stopping the message listener.
-const swPath = manifest.background?.service_worker;
-if (swPath) {
-  manifest.background = { scripts: [swPath], persistent: true };
-}
+// Firefox 128+ supports background.service_worker in MV3 — no background conversion needed.
+// Keeping service_worker avoids the non-persistent event-page suspension problem that
+// would silently kill in-flight fetches to the Go backend mid-response.
 
 // Firefox has limited/inconsistent support for world: "MAIN" in content scripts.
 // Drop the field so the entry falls back to the isolated extension world.

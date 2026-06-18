@@ -11,10 +11,16 @@ import (
 
 type AskRequest struct {
 	Messages []llm.Message `json:"messages"`
+	Provider string        `json:"provider"`
+	Model    string        `json:"model"`
+	APIKey   string        `json:"apiKey"`
 }
 
 type ScreenshotRequest struct {
-	Image string `json:"image"`
+	Image    string `json:"image"`
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	APIKey   string `json:"apiKey"`
 }
 
 type AskResponse struct {
@@ -48,7 +54,8 @@ func handleAsk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reply, err := llm.AskLLM(req.Messages)
+	cfg := llm.Config{Provider: req.Provider, Model: req.Model, APIKey: req.APIKey}
+	reply, err := llm.AskLLM(req.Messages, cfg)
 	if err != nil {
 		log.Printf("LLM error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -71,7 +78,8 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	reply, err := llm.AskVision(req.Image)
+	cfg := llm.Config{Provider: req.Provider, Model: req.Model, APIKey: req.APIKey}
+	reply, err := llm.AskVision(req.Image, cfg)
 	if err != nil {
 		log.Printf("Vision error: %v", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -84,7 +92,7 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	if os.Getenv("ANTHROPIC_API_KEY") == "" {
-		log.Println("Warning: ANTHROPIC_API_KEY is not set")
+		log.Println("Note: ANTHROPIC_API_KEY not set — API keys will be provided per request from the extension")
 	}
 
 	http.HandleFunc("/api/ask", enableCORS(handleAsk))

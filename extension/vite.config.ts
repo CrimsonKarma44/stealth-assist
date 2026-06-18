@@ -7,7 +7,8 @@ export default defineConfig({
       input: {
         background: resolve(__dirname, 'src/background/background.ts'),
         inject: resolve(__dirname, 'src/content/inject.ts'),
-        ui: resolve(__dirname, 'src/content/ui.ts')
+        ui: resolve(__dirname, 'src/content/ui.ts'),
+        options: resolve(__dirname, 'src/options/options.ts')
       },
       output: {
         entryFileNames: 'src/[name].js',

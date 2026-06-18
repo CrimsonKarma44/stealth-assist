@@ -139,6 +139,11 @@ function buildOverlay() {
   const headerBtns = document.createElement('div');
   headerBtns.style.cssText = 'display:flex;gap:6px;align-items:center;';
 
+  const settingsBtn = document.createElement('button');
+  settingsBtn.textContent = '⚙';
+  settingsBtn.title = 'Settings';
+  settingsBtn.style.cssText = 'background:none;border:none;color:#555;cursor:pointer;font-size:13px;padding:0 3px;line-height:1;';
+
   minBtn = document.createElement('button');
   minBtn.textContent = '−';
   minBtn.title = 'Minimize';
@@ -148,6 +153,7 @@ function buildOverlay() {
   closeBtn.textContent = '✕';
   closeBtn.style.cssText = 'background:none;border:none;color:#555;cursor:pointer;font-size:12px;padding:0 3px;line-height:1;';
 
+  headerBtns.appendChild(settingsBtn);
   headerBtns.appendChild(minBtn);
   headerBtns.appendChild(closeBtn);
   header.appendChild(titleEl);
@@ -234,6 +240,10 @@ function buildOverlay() {
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
+  settingsBtn.onclick = () => {
+    chrome.runtime.sendMessage({ type: 'OPEN_OPTIONS' }).catch(() => {});
+  };
+
   closeBtn.onclick = () => {
     overlay?.remove();
     overlay = bodyEl = chatEl = inputEl = sendBtn = minBtn = copyBtn = null;
@@ -286,7 +296,9 @@ function buildOverlay() {
       } else {
         const err = document.createElement('div');
         err.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:10px;';
-        err.textContent = 'Error: ' + (res?.error ?? 'unknown');
+        err.textContent = res?.error === 'not_configured'
+          ? 'No API key configured — click ⚙ to set one up.'
+          : 'Error: ' + (res?.error ?? 'unknown');
         chatEl.appendChild(err);
         chatEl.scrollTop = chatEl.scrollHeight;
       }
@@ -333,7 +345,9 @@ async function takeScreenshot() {
     } else {
       const errEl = document.createElement('div');
       errEl.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:10px;';
-      errEl.textContent = 'Snap error: ' + (res?.error ?? 'unknown');
+      errEl.textContent = res?.error === 'not_configured'
+        ? 'No API key configured — click ⚙ to set one up.'
+        : 'Snap error: ' + (res?.error ?? 'unknown');
       chatEl!.appendChild(errEl);
       chatEl!.scrollTop = chatEl!.scrollHeight;
     }
@@ -391,7 +405,9 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     } else {
       const errEl = document.createElement('div');
       errEl.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:10px;';
-      errEl.textContent = 'Snap error: ' + (msg.error ?? 'unknown');
+      errEl.textContent = msg.error === 'not_configured'
+        ? 'No API key configured — click ⚙ to set one up.'
+        : 'Snap error: ' + (msg.error ?? 'unknown');
       if (chatEl) { chatEl.appendChild(errEl); chatEl.scrollTop = chatEl.scrollHeight; }
     }
   }
