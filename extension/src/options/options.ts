@@ -60,7 +60,7 @@ toggleBtn.addEventListener('click', () => {
 });
 
 saveBtn.addEventListener('click', () => {
-  const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'http://localhost:8080';
+  const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'https://stealth-assist.onrender.com';
   const provider  = providerEl.value;
   const model     = modelEl.value;
   const apiKey    = apiKeyEl.value.trim();
@@ -76,7 +76,7 @@ saveBtn.addEventListener('click', () => {
 });
 
 testBtn.addEventListener('click', () => {
-  const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'http://localhost:8080';
+  const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'https://stealth-assist.onrender.com';
   const provider  = providerEl.value;
   const model     = modelEl.value;
   const apiKey    = apiKeyEl.value.trim();

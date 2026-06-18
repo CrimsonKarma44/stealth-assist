@@ -13,7 +13,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 // ── Settings helpers ───────────────────────────────────────────────────────
 type Settings = { provider: string; model: string; apiKey: string; serverUrl: string; configured: boolean };
 
-const DEFAULT_SERVER = 'http://localhost:8080';
+const DEFAULT_SERVER = 'https://stealth-assist.onrender.com';
 
 function getSettings(): Promise<Settings> {
   return new Promise((resolve) => {
