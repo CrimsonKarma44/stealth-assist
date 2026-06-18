@@ -81,15 +81,27 @@ Server listens on `http://localhost:8080`. Keep it running while using the exten
 ```bash
 cd extension
 npm install       # first time only
-npm run build     # outputs to extension/dist/
 ```
 
-Load in Chrome:
+**Chrome / Chromium:**
+```bash
+npm run build     # outputs to extension/dist/
+```
+Load:
 1. Go to `chrome://extensions`
 2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked** → select `extension/dist/`
+3. Click **Load unpacked** → select `extension/dist/` (the folder)
 
-After any code change, run `npm run build` then click the **refresh icon** on the extension card. Refresh the target tab too so the new content scripts are injected.
+**Firefox / Firefox-based browsers:**
+```bash
+npm run build:firefox   # patches manifest for Firefox MV3 compatibility
+```
+Load:
+1. Go to `about:debugging` → **This Firefox**
+2. Click **Load Temporary Add-on…** → navigate to `extension/dist/` and select **`manifest.json`** (the file, not the folder)
+3. Reload each session — temporary add-ons are cleared on browser restart
+
+After any code change, re-run the appropriate build command and click **Refresh** on the extension card.
 
 ### 3. Screenshot shortcut
 
@@ -131,7 +143,8 @@ by-pass_plugin/
 
 | Task | Command |
 |---|---|
-| Build extension | `cd extension && npm run build` |
+| Build extension (Chrome) | `cd extension && npm run build` |
+| Build extension (Firefox) | `cd extension && npm run build:firefox` |
 | Watch mode (auto-rebuild) | `cd extension && npm run watch` |
 | Run server | `cd server && source .env && go run main.go` |
 | Compile server binary | `cd server && go build -o server_bin main.go` |
