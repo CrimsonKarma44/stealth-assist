@@ -11,7 +11,7 @@ Browser Extension (MV3 — Chrome + Firefox)
   ├── background.ts  → holds conversation history, proxies requests to Go server
   └── options.ts     → settings page (provider, model, API key)
 
-Go Server (localhost:8080)
+Go Server (local or Render)
   ├── /api/ask        → text chat with conversation memory
   └── /api/screenshot → vision mode (screenshot analysis)
 ```
@@ -64,14 +64,21 @@ The background service worker maintains a rolling message history for text chat.
 
 ### 1. Go server
 
+**Option A — run locally:**
 ```bash
 cd server
 go run main.go
 ```
+Server listens on `http://localhost:8080`. Keep it running while using the extension. No `.env` file needed — API keys are configured in the extension and sent per request.
 
-Server listens on `http://localhost:8080`. Keep it running while using the extension.
+**Option B — deploy to Render:**
+1. Push the repo to GitHub
+2. Render dashboard → **New → Web Service** → connect the repo
+3. Render auto-detects `server/render.yaml` — root dir `server`, build `go build -o server_bin main.go`, no env vars to set
+4. Copy the deployed URL (e.g. `https://stealth-assist-xxxx.onrender.com`)
+5. Paste it into **Settings → Server URL** in the extension
 
-> The server no longer requires an `.env` file — API keys are configured in the extension settings page and sent per request. If you prefer the old approach, you can still set `ANTHROPIC_API_KEY` in the environment and it will be used as a fallback when no key is provided by the extension.
+> **Render free tier note:** web services spin down after 15 minutes of inactivity, causing a ~30s cold start on the next request. The $7/month paid tier keeps the service always-on.
 
 ### 2. Extension
 
@@ -100,11 +107,13 @@ Load:
 
 After any code change, re-run the appropriate build command and click **Refresh** on the extension card.
 
-### 3. Configure your API key
+### 3. Configure settings
 
 On first install the settings page opens automatically. You can also reach it any time via:
 - The **⚙** button in the chat overlay
 - Right-clicking the extension icon → **Options**
+
+Set the **Server URL** if using Render (leave blank for local). Then pick a provider and paste your API key.
 
 | Provider | Free tier | Where to get a key |
 |---|---|---|
@@ -149,6 +158,7 @@ by-pass_plugin/
 │   └── vite.config.ts
 └── server/
     ├── main.go                # HTTP server, CORS, /api/ask + /api/screenshot
+    ├── render.yaml            # Render deployment blueprint
     └── llm/
         └── client.go          # Multi-provider LLM client (Anthropic, OpenAI, Gemini)
 ```
