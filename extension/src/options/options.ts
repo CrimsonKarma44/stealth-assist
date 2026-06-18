@@ -22,14 +22,15 @@ const HINTS: Record<string, string> = {
   openai:    'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>.',
 };
 
-const providerEl = document.getElementById('provider') as HTMLSelectElement;
-const modelEl    = document.getElementById('model')    as HTMLSelectElement;
-const apiKeyEl   = document.getElementById('apiKey')   as HTMLInputElement;
-const toggleBtn  = document.getElementById('toggleKey') as HTMLButtonElement;
-const saveBtn    = document.getElementById('saveBtn')   as HTMLButtonElement;
-const testBtn    = document.getElementById('testBtn')   as HTMLButtonElement;
-const statusEl   = document.getElementById('status')   as HTMLParagraphElement;
-const keyHint    = document.getElementById('keyHint')  as HTMLParagraphElement;
+const serverUrlEl = document.getElementById('serverUrl') as HTMLInputElement;
+const providerEl  = document.getElementById('provider')  as HTMLSelectElement;
+const modelEl     = document.getElementById('model')     as HTMLSelectElement;
+const apiKeyEl    = document.getElementById('apiKey')    as HTMLInputElement;
+const toggleBtn   = document.getElementById('toggleKey') as HTMLButtonElement;
+const saveBtn     = document.getElementById('saveBtn')   as HTMLButtonElement;
+const testBtn     = document.getElementById('testBtn')   as HTMLButtonElement;
+const statusEl    = document.getElementById('status')    as HTMLParagraphElement;
+const keyHint     = document.getElementById('keyHint')   as HTMLParagraphElement;
 
 function populateModels(provider: string, selectedModel?: string) {
   modelEl.innerHTML = '';
@@ -59,24 +60,26 @@ toggleBtn.addEventListener('click', () => {
 });
 
 saveBtn.addEventListener('click', () => {
-  const provider = providerEl.value;
-  const model    = modelEl.value;
-  const apiKey   = apiKeyEl.value.trim();
+  const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'http://localhost:8080';
+  const provider  = providerEl.value;
+  const model     = modelEl.value;
+  const apiKey    = apiKeyEl.value.trim();
 
   if (!apiKey) {
     setStatus('err', 'Please enter an API key.');
     return;
   }
 
-  chrome.storage.local.set({ provider, model, apiKey, configured: true }, () => {
+  chrome.storage.local.set({ serverUrl, provider, model, apiKey, configured: true }, () => {
     setStatus('ok', 'Saved.');
   });
 });
 
 testBtn.addEventListener('click', () => {
-  const provider = providerEl.value;
-  const model    = modelEl.value;
-  const apiKey   = apiKeyEl.value.trim();
+  const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'http://localhost:8080';
+  const provider  = providerEl.value;
+  const model     = modelEl.value;
+  const apiKey    = apiKeyEl.value.trim();
 
   if (!apiKey) {
     setStatus('err', 'Enter an API key first.');
@@ -86,7 +89,7 @@ testBtn.addEventListener('click', () => {
   setStatus('', 'Testing…');
   testBtn.disabled = true;
 
-  chrome.runtime.sendMessage({ type: 'TEST_CONNECTION', provider, model, apiKey }, (res) => {
+  chrome.runtime.sendMessage({ type: 'TEST_CONNECTION', serverUrl, provider, model, apiKey }, (res) => {
     testBtn.disabled = false;
     if (res?.ok) {
       setStatus('ok', 'Connected ✓');
@@ -102,12 +105,14 @@ function setStatus(cls: 'ok' | 'err' | '', text: string) {
 }
 
 // Load saved settings on open
-chrome.storage.local.get(['provider', 'model', 'apiKey'], (items) => {
-  const provider = (items.provider as string) || 'google';
-  const model    = (items.model    as string) || '';
-  const apiKey   = (items.apiKey   as string) || '';
+chrome.storage.local.get(['serverUrl', 'provider', 'model', 'apiKey'], (items) => {
+  const serverUrl = (items.serverUrl as string) || '';
+  const provider  = (items.provider  as string) || 'google';
+  const model     = (items.model     as string) || '';
+  const apiKey    = (items.apiKey    as string) || '';
 
-  providerEl.value = provider;
+  serverUrlEl.value = serverUrl;
+  providerEl.value  = provider;
   populateModels(provider, model);
   updateHint(provider);
   apiKeyEl.value = apiKey;

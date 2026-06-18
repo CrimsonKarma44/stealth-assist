@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: stealth-assist
+    runtime: go
+    rootDir: server
+    buildCommand: go build -o server_bin main.go
+    startCommand: ./server_bin

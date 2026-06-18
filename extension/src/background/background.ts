@@ -11,15 +11,18 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // ── Settings helpers ───────────────────────────────────────────────────────
-type Settings = { provider: string; model: string; apiKey: string; configured: boolean };
+type Settings = { provider: string; model: string; apiKey: string; serverUrl: string; configured: boolean };
+
+const DEFAULT_SERVER = 'http://localhost:8080';
 
 function getSettings(): Promise<Settings> {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['provider', 'model', 'apiKey', 'configured'], (items) => {
+    chrome.storage.local.get(['provider', 'model', 'apiKey', 'serverUrl', 'configured'], (items) => {
       resolve({
         provider:   (items.provider   as string)  || '',
         model:      (items.model      as string)  || '',
         apiKey:     (items.apiKey     as string)  || '',
+        serverUrl:  (items.serverUrl  as string)  || DEFAULT_SERVER,
         configured: (items.configured as boolean) || false,
       });
     });
@@ -54,7 +57,7 @@ chrome.commands.onCommand.addListener(async (command) => {
   const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
 
   try {
-    const res = await fetch('http://localhost:8080/api/screenshot', {
+    const res = await fetch(`${settings.serverUrl}/api/screenshot`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -91,7 +94,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
       history.push({ role: 'user', content: request.payload });
 
-      fetch('http://localhost:8080/api/ask', {
+      fetch(`${settings.serverUrl}/api/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,7 +129,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       chrome.tabs.captureVisibleTab({ format: 'png' })
         .then(dataUrl => {
           const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-          return fetch('http://localhost:8080/api/screenshot', {
+          return fetch(`${settings.serverUrl}/api/screenshot`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -147,7 +150,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   // Test connection from settings page
   if (request.type === 'TEST_CONNECTION') {
-    fetch('http://localhost:8080/api/ask', {
+    fetch(`${request.serverUrl || DEFAULT_SERVER}/api/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

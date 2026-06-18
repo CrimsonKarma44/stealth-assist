@@ -98,8 +98,12 @@ func main() {
 	http.HandleFunc("/api/ask", enableCORS(handleAsk))
 	http.HandleFunc("/api/screenshot", enableCORS(handleScreenshot))
 
-	log.Println("Listening on :8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	log.Printf("Listening on :%s", port)
+	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
 }

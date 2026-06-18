@@ -105,6 +105,12 @@
       text-decoration: none;
     }
 
+    .hint code {
+      color: #c4b5fd;
+      font-size: 11px;
+      font-family: 'Fira Code', monospace;
+    }
+
     .actions {
       display: flex;
       gap: 10px;
@@ -153,6 +159,12 @@
   <div class="card">
     <h1>Stealth Assist</h1>
     <p class="subtitle">Choose your AI provider and paste your API key. Keys are stored locally in your browser and never leave your machine.</p>
+
+    <div class="field">
+      <label for="serverUrl">Server URL</label>
+      <input type="text" id="serverUrl" placeholder="http://localhost:8080" autocomplete="off" />
+      <p class="hint">Leave as default for local use, or paste your Render URL (e.g. <code>https://stealth-assist.onrender.com</code>).</p>
+    </div>
 
     <div class="field">
       <label for="provider">Provider</label>
