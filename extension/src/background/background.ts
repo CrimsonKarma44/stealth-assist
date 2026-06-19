@@ -81,6 +81,12 @@ chrome.commands.onCommand.addListener(async (command) => {
       }),
     });
     const data = await res.json();
+    if (data.reply) {
+      const history = await loadHistory();
+      history.push({ role: 'user',      content: '[Screenshot] Answer all questions visible on this screen.' });
+      history.push({ role: 'assistant', content: data.reply });
+      saveHistory(history);
+    }
     chrome.tabs.sendMessage(tab.id, { type: 'SNAP_RESPONSE', reply: data.reply }).catch(() => {});
   } catch (err) {
     chrome.tabs.sendMessage(tab.id, { type: 'SNAP_RESPONSE', error: String(err) }).catch(() => {});
@@ -156,7 +162,16 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           });
         })
         .then(res => res.json())
-        .then(data => sendResponse({ reply: data.reply }))
+        .then(data => {
+          if (data.reply) {
+            loadHistory().then(history => {
+              history.push({ role: 'user',      content: '[Screenshot] Answer all questions visible on this screen.' });
+              history.push({ role: 'assistant', content: data.reply });
+              saveHistory(history);
+            });
+          }
+          sendResponse({ reply: data.reply });
+        })
         .catch(err => sendResponse({ error: err.toString() }));
     });
 

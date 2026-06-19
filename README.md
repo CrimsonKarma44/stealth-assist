@@ -56,7 +56,7 @@ In both cases the overlay is hidden before capture, then restored with the AI's 
 
 ### Conversation memory
 
-The background service worker maintains a rolling message history for text chat. Every turn is sent to the server so the model can answer follow-up questions with full context. Memory is held in service-worker RAM — never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it. Screenshot responses are standalone (not added to history).
+The background service worker maintains a rolling message history for all interactions. Every text turn and every screenshot exchange is added to history and persisted to `chrome.storage.local`, so follow-up text questions after a Snap have full context. Memory is never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it.
 
 ---
 
