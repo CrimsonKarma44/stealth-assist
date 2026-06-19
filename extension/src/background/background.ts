@@ -1,7 +1,6 @@
 // Background service worker — relays messages to the local Go backend.
-// Conversation history is held in memory here; the page never sees it.
-
-const history: Array<{ role: string; content: string }> = [];
+// Conversation history is persisted to chrome.storage.local so it survives
+// service worker suspension between messages.
 
 // ── First install: open settings page ─────────────────────────────────────
 chrome.runtime.onInstalled.addListener((details) => {
@@ -12,6 +11,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // ── Settings helpers ───────────────────────────────────────────────────────
 type Settings = { provider: string; model: string; apiKey: string; serverUrl: string; configured: boolean };
+type Turn = { role: string; content: string };
 
 const DEFAULT_SERVER = 'https://stealth-assist.onrender.com';
 
@@ -27,6 +27,19 @@ function getSettings(): Promise<Settings> {
       });
     });
   });
+}
+
+// ── History helpers (storage-backed) ──────────────────────────────────────
+function loadHistory(): Promise<Turn[]> {
+  return new Promise((resolve) => {
+    chrome.storage.local.get('history', (items) => {
+      resolve((items.history as Turn[]) || []);
+    });
+  });
+}
+
+function saveHistory(history: Turn[]): void {
+  chrome.storage.local.set({ history });
 }
 
 // ── Manifest command: Ctrl+Shift+Z ─────────────────────────────────────────
@@ -86,7 +99,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   // Text chat
   if (request.type === 'ASK_LLM') {
-    getSettings().then((settings) => {
+    Promise.all([getSettings(), loadHistory()]).then(([settings, history]) => {
       if (!settings.configured) {
         sendResponse({ error: 'not_configured' });
         return;
@@ -107,10 +120,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         .then(res => res.json())
         .then(data => {
           if (data.reply) history.push({ role: 'assistant', content: data.reply });
+          saveHistory(history);
           sendResponse({ reply: data.reply });
         })
         .catch(err => {
           history.pop();
+          saveHistory(history);
           sendResponse({ error: err.toString() });
         });
     });
@@ -172,8 +187,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
   // Clear conversation history
   if (request.type === 'CLEAR_HISTORY') {
-    history.length = 0;
-    sendResponse({ ok: true });
+    chrome.storage.local.remove('history', () => sendResponse({ ok: true }));
     return true;
   }
 });
