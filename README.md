@@ -49,7 +49,7 @@ Two ways to capture the screen and ask the AI what's on it:
 
 | Method | Trigger | How it works |
 |---|---|---|
-| **Keyboard** | **Ctrl+Shift+Z** (Mac: Cmd+Shift+Z) | Manifest command fires directly in the background service worker, preserving the user-gesture context required for `captureVisibleTab`. |
+| **Keyboard** | **Alt+Shift+Z** | Manifest command fires directly in the background service worker, preserving the user-gesture context required for `captureVisibleTab`. |
 | **Snap button** | Click **Snap** in the overlay | Content script sends a `SCREENSHOT_ASK` message; the `<all_urls>` host permission grants `captureVisibleTab` access without needing a user gesture. |
 
 In both cases the overlay is hidden before capture, then restored with the AI's answer. The model reads every question visible on screen and numbers its answers to match.
@@ -124,7 +124,7 @@ Select your provider, pick a model, paste the key, click **Save**. Use **Test co
 
 ### 4. Screenshot shortcut
 
-After loading the extension, Chrome may assign the `Ctrl+Shift+Z` shortcut automatically. If it conflicts with another extension, reassign it at:
+After loading the extension, Chrome may assign the `Alt+Shift+Z` shortcut automatically. If it conflicts with another extension, reassign it at:
 
 ```
 chrome://extensions/shortcuts
