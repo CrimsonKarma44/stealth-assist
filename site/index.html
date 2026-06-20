@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stealth Assist — AI overlay they can't detect</title>
+  <meta name="description" content="A browser extension that brings Claude AI to any tab while staying completely invisible to focus-detection and tab-switch monitoring." />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="#">Stealth<span>Assist</span></a>
+    <ul class="nav-links">
+      <li><a href="#features">Features</a></li>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#download">Download</a></li>
+      <li><a href="https://github.com/CrimsonKarma44/stealth-assist" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="#download" class="nav-cta">Get it free</a></li>
+    </ul>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge">
+      <span class="badge-dot"></span>
+      Open Source · Chrome &amp; Firefox
+    </div>
+    <h1>AI assistance that stays <em>invisible</em></h1>
+    <p>
+      Stealth Assist puts a Claude-powered chat overlay on any tab — while silently spoofing focus, visibility, and fullscreen APIs so the page never knows you switched away.
+    </p>
+    <div class="hero-actions">
+      <a href="#download" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v9M4 7l4 4 4-4M2 13h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download extension
+      </a>
+      <a href="https://github.com/CrimsonKarma44/stealth-assist" target="_blank" rel="noopener" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <p class="hero-note">Free &amp; open source · No account required · Self-hosted AI server</p>
+  </section>
+
+  <!-- TERMINAL DEMO -->
+  <div class="demo">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="t-dot"></div>
+        <div class="t-dot"></div>
+        <div class="t-dot"></div>
+        <span class="terminal-title">stealth-assist — server</span>
+      </div>
+      <div class="terminal-body">
+        <div class="t-line">
+          <span class="t-prompt">$</span>
+          <span class="t-cmd">cd server &amp;&amp; source .env</span>
+        </div>
+        <div class="t-line">
+          <span class="t-prompt">$</span>
+          <span class="t-cmd">go run main.go</span>
+        </div>
+        <div class="t-blank"></div>
+        <div class="t-line">
+          <span class="t-output">✓ Server listening on :8080</span>
+        </div>
+        <div class="t-line">
+          <span class="t-output">✓ Anthropic API key loaded</span>
+        </div>
+        <div class="t-blank"></div>
+        <div class="t-line">
+          <span class="t-comment"># open any tab, press Ctrl+Shift+X</span>
+        </div>
+        <div class="t-line">
+          <span class="t-comment"># the overlay appears — the page never knows</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURES -->
+  <section id="features">
+    <div class="section-label">What it does</div>
+    <h2 class="section-title">Everything you need, nothing they can see</h2>
+    <p class="section-sub">Built for situations where you need AI help but can't afford to trip detection systems.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🕵️</div>
+        <h3>Invisible to detection</h3>
+        <p>Spoofs <code>visibilityState</code>, <code>document.hidden</code>, <code>hasFocus()</code>, and <code>fullscreenElement</code>. Silently swallows <code>blur</code>, <code>visibilitychange</code>, and <code>focusout</code> events before they fire.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💬</div>
+        <h3>Claude-powered chat</h3>
+        <p>Ask anything via a floating overlay. Supports full conversation history, markdown rendering with code blocks, and multi-turn dialogue — all routed through your own local server.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📸</div>
+        <h3>Screenshot + vision</h3>
+        <p>Hit <kbd>Alt+Shift+Z</kbd> to capture exactly what's on screen, send it to Claude's vision model, and get a response. The overlay hides itself during capture so the screenshot is clean.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>No data leaves your machine</h3>
+        <p>Conversations go from the extension to your local Go server, then directly to the Anthropic API with your own key. No third-party relay, no logging, no accounts.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🧲</div>
+        <h3>Draggable overlay</h3>
+        <p>The chat panel floats above everything at maximum z-index. Drag it anywhere, minimize it to a title bar, or dismiss it instantly. It remembers your position across the session.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🦊</div>
+        <h3>Chrome &amp; Firefox</h3>
+        <p>Two dedicated builds from the same codebase. The Chrome build runs full stealth injection in the main world. The Firefox build loads the overlay and vision mode without the spoof layer.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">Simple by design</h2>
+    <p class="section-sub">Three moving parts. No cloud dependency beyond your Anthropic key.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Run the local server</h3>
+          <p>Clone the repo, add your <code>ANTHROPIC_API_KEY</code> to <code>server/.env</code>, and run <code>go run main.go</code>. The server starts on <code>:8080</code> and handles all LLM calls.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Load the extension</h3>
+          <p>Build with <code>npm run build</code>, then load the <code>dist/</code> folder as an unpacked extension in Chrome, or load the manifest file in Firefox. Takes about 30 seconds.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Open any tab and press Ctrl+Shift+X</h3>
+          <p>The chat overlay appears. The inject script has already patched the page's focus and visibility APIs at <code>document_start</code> — the page sees you as fully focused the entire time.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Ask or screenshot</h3>
+          <p>Type a question and hit <kbd>Enter</kbd>, or press <kbd>Alt+Shift+Z</kbd> for vision mode. Responses stream back from Claude. Conversation history is preserved until you click Clear or close the browser.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SHORTCUTS -->
+    <div class="shortcuts">
+      <div class="shortcut-item">
+        <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>X</kbd>
+        <span>Toggle overlay</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd>
+        <span>Screenshot + ask Claude</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Enter</kbd>
+        <span>Send message</span>
+      </div>
+      <div class="shortcut-item">
+        <kbd>Shift</kbd>+<kbd>Enter</kbd>
+        <span>New line in input</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOWNLOAD -->
+  <section id="download">
+    <div class="section-label">Get started</div>
+    <h2 class="section-title">Free &amp; self-hosted</h2>
+    <p class="section-sub">You need Node.js, Go, and an Anthropic API key. Everything else is in the repo.</p>
+
+    <div class="download-grid">
+      <!-- Chrome -->
+      <div class="download-card">
+        <div class="download-card-header">
+          <div class="browser-icon browser-chrome">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="4" fill="#4285F4"/>
+              <path d="M12 8h8.5a9 9 0 1 0-4.25 10.4" stroke="#EA4335" stroke-width="2" fill="none"/>
+              <path d="M12 8 7.75 15.5a9 9 0 0 0 8.75 3.9" stroke="#34A853" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Chrome</h3>
+            <div class="sub">Full stealth mode · MV3</div>
+          </div>
+        </div>
+        <ol class="download-steps">
+          <li>Clone the repo and run <code>npm install</code> in <code>extension/</code></li>
+          <li>Run <code>npm run build</code> to generate <code>extension/dist/</code></li>
+          <li>Go to <code>chrome://extensions</code>, enable Developer Mode</li>
+          <li>Click <strong>Load unpacked</strong> and select the <code>dist/</code> folder</li>
+          <li>Start the Go server and open any tab</li>
+        </ol>
+        <a href="https://github.com/CrimsonKarma44/stealth-assist" target="_blank" rel="noopener" class="btn btn-primary">
+          Clone on GitHub
+        </a>
+      </div>
+
+      <!-- Firefox -->
+      <div class="download-card">
+        <div class="download-card-header">
+          <div class="browser-icon browser-firefox">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#FF6200">
+              <ellipse cx="12" cy="13" rx="7" ry="8" fill="#FF6200" opacity="0.15"/>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93V18c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.17.67 4.25 1.75L15.66 9.3A4 4 0 0 0 8 12c0 2.21 1.79 4 4 4v-2l3 3-2 2.93z" fill="#FF6200"/>
+            </svg>
+          </div>
+          <div>
+            <h3>Firefox</h3>
+            <div class="sub">Overlay + vision · MV3</div>
+          </div>
+        </div>
+        <ol class="download-steps">
+          <li>Clone the repo and run <code>npm install</code> in <code>extension/</code></li>
+          <li>Run <code>npm run build:firefox</code> to generate the Firefox build</li>
+          <li>Go to <code>about:debugging</code> → <strong>This Firefox</strong></li>
+          <li>Click <strong>Load Temporary Add-on…</strong> and select <code>dist/manifest.json</code></li>
+          <li>Start the Go server and open any tab</li>
+        </ol>
+        <a href="https://github.com/CrimsonKarma44/stealth-assist" target="_blank" rel="noopener" class="btn btn-secondary">
+          Clone on GitHub
+        </a>
+      </div>
+    </div>
+
+    <!-- Prerequisites note -->
+    <div style="margin-top: 24px; padding: 20px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius); font-size: 14px; color: var(--text-muted); line-height: 1.7;">
+      <strong style="color: var(--text-dim);">Prerequisites:</strong>
+      Node.js ≥ 18 · Go ≥ 1.21 · An <a href="https://console.anthropic.com/" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">Anthropic API key</a>.
+      Add the key to <code>server/.env</code> as <code>export ANTHROPIC_API_KEY=sk-ant-...</code> before starting the server.
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div class="divider" style="max-width:1100px; margin: 0 auto;"></div>
+  <footer>
+    <a class="footer-logo" href="#">Stealth<span>Assist</span></a>
+    <p class="footer-note">Open source · MIT License</p>
+    <ul class="footer-links">
+      <li><a href="https://github.com/CrimsonKarma44/stealth-assist" target="_blank" rel="noopener">GitHub</a></li>
+      <li><a href="https://github.com/CrimsonKarma44/stealth-assist/issues" target="_blank" rel="noopener">Issues</a></li>
+    </ul>
+  </footer>
+
+</body>
+</html>
