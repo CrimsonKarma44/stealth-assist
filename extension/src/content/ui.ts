@@ -185,7 +185,7 @@ function buildOverlay() {
 
   const snapBtn = document.createElement('button');
   snapBtn.textContent = 'Snap';
-  snapBtn.title = 'Capture screen and ask Claude (Ctrl+Shift+Z)';
+  snapBtn.title = 'Capture screen and ask AI';
   snapBtn.style.cssText = `
     background:none;border:1px solid #2d2d3a;border-radius:5px;
     color:#60a5fa;cursor:pointer;font-size:11px;padding:3px 10px;
@@ -362,53 +362,48 @@ async function takeScreenshot() {
   }
 }
 
-// ── Global shortcut ────────────────────────────────────────────────────────
-document.addEventListener('keydown', (e: KeyboardEvent) => {
-  if (!(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x')) return;
-  e.preventDefault();
+// ── Shortcut helpers ───────────────────────────────────────────────────────
+const DEFAULT_SCREENSHOT_SHORTCUT = 'Alt+Shift+Z';
 
-  const selected = window.getSelection()?.toString().trim() ?? '';
+function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
+  const parts = shortcut.toLowerCase().split('+');
+  const key   = parts[parts.length - 1];
+  return e.ctrlKey  === parts.includes('ctrl')  &&
+         e.shiftKey === parts.includes('shift') &&
+         e.altKey   === parts.includes('alt')   &&
+         e.metaKey  === parts.includes('meta')  &&
+         e.key.toLowerCase() === key;
+}
 
-  if (!overlay) {
-    buildOverlay();
-  } else if (minimized) {
-    setMinimized(false);
-  }
-
-  if (selected && inputEl) {
-    inputEl.value = selected;
-    inputEl.style.height = 'auto';
-    inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
-  }
-
-  inputEl?.focus();
-  if (inputEl) inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+// ── Global shortcuts ───────────────────────────────────────────────────────
+let screenshotShortcut = DEFAULT_SCREENSHOT_SHORTCUT;
+chrome.storage.local.get('screenshotShortcut', (items) => {
+  screenshotShortcut = (items.screenshotShortcut as string) || DEFAULT_SCREENSHOT_SHORTCUT;
 });
 
-// ── Messages from background (manifest command path) ──────────────────────
-chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-  // Background asks us to hide overlay before it captures the tab
-  if (msg.type === 'SNAP_HIDE') {
-    if (overlay) overlay.style.visibility = 'hidden';
-    // Confirm after two paint cycles so the hide is committed before capture
-    requestAnimationFrame(() => requestAnimationFrame(() => sendResponse({ ok: true })));
-    return true; // async response
+document.addEventListener('keydown', (e: KeyboardEvent) => {
+  // Overlay toggle — Ctrl+Shift+X (fixed)
+  if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
+    e.preventDefault();
+    const selected = window.getSelection()?.toString().trim() ?? '';
+    if (!overlay) {
+      buildOverlay();
+    } else if (minimized) {
+      setMinimized(false);
+    }
+    if (selected && inputEl) {
+      inputEl.value = selected;
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
+    }
+    inputEl?.focus();
+    if (inputEl) inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+    return;
   }
 
-  // Background delivers the screenshot answer
-  if (msg.type === 'SNAP_RESPONSE') {
-    if (!overlay) buildOverlay();
-    overlay!.style.visibility = 'visible';
-    if (minimized) setMinimized(false);
-    if (msg.reply) {
-      appendMessage('assistant', msg.reply);
-    } else {
-      const errEl = document.createElement('div');
-      errEl.style.cssText = 'color:#f87171;font-size:13px;margin-bottom:10px;';
-      errEl.textContent = msg.error === 'not_configured'
-        ? 'No API key configured — click ⚙ to set one up.'
-        : 'Snap error: ' + (msg.error ?? 'unknown');
-      if (chatEl) { chatEl.appendChild(errEl); chatEl.scrollTop = chatEl.scrollHeight; }
-    }
+  // Screenshot — user-configured shortcut
+  if (matchesShortcut(e, screenshotShortcut)) {
+    e.preventDefault();
+    takeScreenshot();
   }
 });

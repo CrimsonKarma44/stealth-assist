@@ -22,15 +22,16 @@ const HINTS: Record<string, string> = {
   openai:    'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>.',
 };
 
-const serverUrlEl = document.getElementById('serverUrl') as HTMLInputElement;
-const providerEl  = document.getElementById('provider')  as HTMLSelectElement;
-const modelEl     = document.getElementById('model')     as HTMLSelectElement;
-const apiKeyEl    = document.getElementById('apiKey')    as HTMLInputElement;
-const toggleBtn   = document.getElementById('toggleKey') as HTMLButtonElement;
-const saveBtn     = document.getElementById('saveBtn')   as HTMLButtonElement;
-const testBtn     = document.getElementById('testBtn')   as HTMLButtonElement;
-const statusEl    = document.getElementById('status')    as HTMLParagraphElement;
-const keyHint     = document.getElementById('keyHint')   as HTMLParagraphElement;
+const serverUrlEl       = document.getElementById('serverUrl')         as HTMLInputElement;
+const providerEl        = document.getElementById('provider')          as HTMLSelectElement;
+const modelEl           = document.getElementById('model')             as HTMLSelectElement;
+const apiKeyEl          = document.getElementById('apiKey')            as HTMLInputElement;
+const toggleBtn         = document.getElementById('toggleKey')         as HTMLButtonElement;
+const screenshotShortEl = document.getElementById('screenshotShortcut') as HTMLInputElement;
+const saveBtn           = document.getElementById('saveBtn')           as HTMLButtonElement;
+const testBtn           = document.getElementById('testBtn')           as HTMLButtonElement;
+const statusEl          = document.getElementById('status')            as HTMLParagraphElement;
+const keyHint           = document.getElementById('keyHint')           as HTMLParagraphElement;
 
 function populateModels(provider: string, selectedModel?: string) {
   modelEl.innerHTML = '';
@@ -53,6 +54,19 @@ providerEl.addEventListener('change', () => {
   statusEl.textContent = '';
 });
 
+// ── Screenshot shortcut recorder ───────────────────────────────────────────
+screenshotShortEl.addEventListener('keydown', (e: KeyboardEvent) => {
+  e.preventDefault();
+  const parts: string[] = [];
+  if (e.ctrlKey)  parts.push('Ctrl');
+  if (e.altKey)   parts.push('Alt');
+  if (e.shiftKey) parts.push('Shift');
+  if (e.metaKey)  parts.push('Meta');
+  const key = e.key;
+  if (!['Control', 'Alt', 'Shift', 'Meta'].includes(key)) parts.push(key.toUpperCase());
+  if (parts.length > 1) screenshotShortEl.value = parts.join('+');
+});
+
 toggleBtn.addEventListener('click', () => {
   const show = apiKeyEl.type === 'password';
   apiKeyEl.type = show ? 'text' : 'password';
@@ -60,17 +74,18 @@ toggleBtn.addEventListener('click', () => {
 });
 
 saveBtn.addEventListener('click', () => {
-  const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'https://stealth-assist.onrender.com';
-  const provider  = providerEl.value;
-  const model     = modelEl.value;
-  const apiKey    = apiKeyEl.value.trim();
+  const serverUrl         = serverUrlEl.value.trim().replace(/\/$/, '') || 'https://stealth-assist.onrender.com';
+  const provider          = providerEl.value;
+  const model             = modelEl.value;
+  const apiKey            = apiKeyEl.value.trim();
+  const screenshotShortcut = screenshotShortEl.value.trim() || 'Alt+Shift+Z';
 
   if (!apiKey) {
     setStatus('err', 'Please enter an API key.');
     return;
   }
 
-  chrome.storage.local.set({ serverUrl, provider, model, apiKey, configured: true }, () => {
+  chrome.storage.local.set({ serverUrl, provider, model, apiKey, screenshotShortcut, configured: true }, () => {
     setStatus('ok', 'Saved.');
   });
 });
@@ -105,15 +120,17 @@ function setStatus(cls: 'ok' | 'err' | '', text: string) {
 }
 
 // Load saved settings on open
-chrome.storage.local.get(['serverUrl', 'provider', 'model', 'apiKey'], (items) => {
-  const serverUrl = (items.serverUrl as string) || '';
-  const provider  = (items.provider  as string) || 'google';
-  const model     = (items.model     as string) || '';
-  const apiKey    = (items.apiKey    as string) || '';
+chrome.storage.local.get(['serverUrl', 'provider', 'model', 'apiKey', 'screenshotShortcut'], (items) => {
+  const serverUrl         = (items.serverUrl         as string) || '';
+  const provider          = (items.provider          as string) || 'google';
+  const model             = (items.model             as string) || '';
+  const apiKey            = (items.apiKey            as string) || '';
+  const screenshotShortcut = (items.screenshotShortcut as string) || 'Alt+Shift+Z';
 
-  serverUrlEl.value = serverUrl;
-  providerEl.value  = provider;
+  serverUrlEl.value        = serverUrl;
+  providerEl.value         = provider;
   populateModels(provider, model);
   updateHint(provider);
-  apiKeyEl.value = apiKey;
+  apiKeyEl.value           = apiKey;
+  screenshotShortEl.value  = screenshotShortcut;
 });

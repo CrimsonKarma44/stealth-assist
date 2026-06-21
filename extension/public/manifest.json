@@ -31,14 +31,6 @@
   "host_permissions": [
     "<all_urls>"
   ],
-  "commands": {
-    "screenshot": {
-      "suggested_key": {
-        "default": "Alt+Shift+Z"
-      },
-      "description": "Capture screen and ask AI"
-    }
-  },
   "background": {
     "service_worker": "src/background.js",
     "type": "module"

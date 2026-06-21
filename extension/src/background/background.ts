@@ -42,57 +42,6 @@ function saveHistory(history: Turn[]): void {
   chrome.storage.local.set({ history });
 }
 
-// ── Manifest command: Ctrl+Shift+Z ─────────────────────────────────────────
-chrome.commands.onCommand.addListener(async (command) => {
-  if (command !== 'screenshot') return;
-
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id) return;
-
-  try {
-    await chrome.tabs.sendMessage(tab.id, { type: 'SNAP_HIDE' });
-  } catch { /* content script may not be injected yet */ }
-
-  let dataUrl: string;
-  try {
-    dataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
-  } catch (err) {
-    chrome.tabs.sendMessage(tab.id, { type: 'SNAP_RESPONSE', error: String(err) }).catch(() => {});
-    return;
-  }
-
-  const settings = await getSettings();
-  if (!settings.configured) {
-    chrome.tabs.sendMessage(tab.id, { type: 'SNAP_RESPONSE', error: 'not_configured' }).catch(() => {});
-    return;
-  }
-
-  const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
-
-  try {
-    const res = await fetch(`${settings.serverUrl}/api/screenshot`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        image:    base64,
-        provider: settings.provider,
-        model:    settings.model,
-        apiKey:   settings.apiKey,
-      }),
-    });
-    const data = await res.json();
-    if (data.reply) {
-      const history = await loadHistory();
-      history.push({ role: 'user',      content: '[Screenshot] Answer all questions visible on this screen.' });
-      history.push({ role: 'assistant', content: data.reply });
-      saveHistory(history);
-    }
-    chrome.tabs.sendMessage(tab.id, { type: 'SNAP_RESPONSE', reply: data.reply }).catch(() => {});
-  } catch (err) {
-    chrome.tabs.sendMessage(tab.id, { type: 'SNAP_RESPONSE', error: String(err) }).catch(() => {});
-  }
-});
-
 // ── Message handler ────────────────────────────────────────────────────────
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
 
