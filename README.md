@@ -1,6 +1,10 @@
 # Stealth Assist
 
-A Chrome/Firefox extension + local Go backend that bypasses tab-visibility and focus-detection used by proctoring software, and gives you a private AI assistant accessible via keyboard shortcuts on any page. Supports Anthropic Claude, OpenAI, and Google Gemini.
+A Chrome/Firefox (MV3) browser extension + Go backend that bypasses tab-visibility and focus-detection, and puts an AI chat overlay one shortcut away on any page. Built with TypeScript and Go. Supports Anthropic Claude, OpenAI, and Google Gemini — bring your own API key.
+
+**[stealth-assist-1.onrender.com](https://stealth-assist-1.onrender.com)** — landing page
+
+---
 
 ## How it works
 
@@ -11,7 +15,7 @@ Browser Extension (MV3 — Chrome + Firefox)
   ├── background.ts  → holds conversation history, proxies requests to Go server
   └── options.ts     → settings page (provider, model, API key)
 
-Go Server (local or Render)
+Go Server (Render-hosted or self-hosted)
   ├── /api/ask        → text chat with conversation memory
   └── /api/screenshot → vision mode (screenshot analysis)
 ```
@@ -26,7 +30,7 @@ Go Server (local or Render)
 - `document.fullscreenElement` → mock element
 - `EventTarget.prototype.addEventListener` → silently drops `visibilitychange`, `blur`, and `focusout` event registrations
 
-> **Firefox note:** the MAIN world injection doesn't work on Firefox (stripped at build time), so the spoofing layer is Chrome/Chromium only. The chat overlay and screenshot features work on both.
+> **Firefox note:** MAIN world injection is stripped at build time for Firefox, so the spoofing layer is Chrome/Chromium only. The chat overlay and screenshot features work on both browsers.
 
 ### Chat overlay
 
@@ -52,11 +56,11 @@ Two ways to capture the screen and ask the AI what's on it:
 | **Keyboard** | **Alt+Shift+Z** | Manifest command fires directly in the background service worker, preserving the user-gesture context required for `captureVisibleTab`. |
 | **Snap button** | Click **Snap** in the overlay | Content script sends a `SCREENSHOT_ASK` message; the `<all_urls>` host permission grants `captureVisibleTab` access without needing a user gesture. |
 
-In both cases the overlay is hidden before capture, then restored with the AI's answer. The model reads every question visible on screen and numbers its answers to match.
+In both cases the overlay hides before capture, then reappears with the AI's answer.
 
 ### Conversation memory
 
-The background service worker maintains a rolling message history for all interactions. Every text turn and every screenshot exchange is added to history and persisted to `chrome.storage.local`, so follow-up text questions after a Snap have full context. Memory is never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it.
+The background service worker maintains a rolling message history for all text interactions, persisted to `chrome.storage.local`. Follow-up questions after a Snap have full context. Memory is never written to `localStorage` or any page-accessible storage. Clicking **Clear** resets it.
 
 ---
 
@@ -64,20 +68,27 @@ The background service worker maintains a rolling message history for all intera
 
 ### 1. Go server
 
-**Option A — run locally:**
+**Option A — use the hosted server (default):**
+
+The extension already points to `https://stealth-assist.onrender.com` out of the box — no server setup needed. Just load the extension and configure your API key in settings.
+
+> **Render free tier note:** the server spins down after 15 minutes of inactivity, causing a ~30s cold start on the next request. The $7/month paid tier keeps it always-on.
+
+**Option B — self-host:**
+
+Requires modifying the default server URL in the extension source before building.
+
 ```bash
 cd server
-go run main.go
+go run main.go     # listens on http://localhost:8080
 ```
-Server listens on `http://localhost:8080`. Keep it running while using the extension. No `.env` file needed — API keys are configured in the extension and sent per request.
 
-**Option B — deploy to Render:**
-1. Push the repo to GitHub
+No `.env` file needed — API keys are sent per request from the extension.
+
+To deploy your own instance to Render:
+1. Push your fork to GitHub
 2. Render dashboard → **New → Web Service** → connect the repo
-3. Render auto-detects `server/render.yaml` — root dir `server`, build `go build -o server_bin main.go`, no env vars to set
-4. Deploy — the extension already defaults to `https://stealth-assist.onrender.com`
-
-> **Render free tier note:** web services spin down after 15 minutes of inactivity, causing a ~30s cold start on the next request. The $7/month paid tier keeps the service always-on.
+3. Render auto-detects `server/render.yaml` — root dir `server`, build `go build -o server_bin main.go`
 
 ### 2. Extension
 
@@ -90,7 +101,6 @@ npm install       # first time only
 ```bash
 npm run build     # outputs to extension/dist/
 ```
-Load:
 1. Go to `chrome://extensions`
 2. Enable **Developer mode** (top-right toggle)
 3. Click **Load unpacked** → select `extension/dist/` (the folder)
@@ -99,20 +109,17 @@ Load:
 ```bash
 npm run build:firefox   # patches manifest for Firefox MV3 compatibility
 ```
-Load:
 1. Go to `about:debugging` → **This Firefox**
-2. Click **Load Temporary Add-on…** → navigate to `extension/dist/` and select **`manifest.json`** (the file, not the folder)
+2. Click **Load Temporary Add-on…** → select `extension/dist/manifest.json` (the file, not the folder)
 3. Reload each session — temporary add-ons are cleared on browser restart
 
 After any code change, re-run the appropriate build command and click **Refresh** on the extension card.
 
 ### 3. Configure settings
 
-On first install the settings page opens automatically. You can also reach it any time via:
+On first install the settings page opens automatically. You can also reach it via:
 - The **⚙** button in the chat overlay
 - Right-clicking the extension icon → **Options**
-
-The extension defaults to `https://stealth-assist.onrender.com`. If running the server locally, change **Server URL** to `http://localhost:8080`. Then pick a provider and paste your API key.
 
 | Provider | Free tier | Where to get a key |
 |---|---|---|
@@ -120,17 +127,15 @@ The extension defaults to `https://stealth-assist.onrender.com`. If running the 
 | **Anthropic Claude** | Paid | [console.anthropic.com](https://console.anthropic.com/) |
 | **OpenAI** | Paid | [platform.openai.com](https://platform.openai.com/api-keys) |
 
-Select your provider, pick a model, paste the key, click **Save**. Use **Test connection** to verify before closing the page.
+Select your provider, pick a model, paste your API key, click **Save**. Use **Test connection** to verify before closing the page.
 
 ### 4. Screenshot shortcut
 
-After loading the extension, Chrome may assign the `Alt+Shift+Z` shortcut automatically. If it conflicts with another extension, reassign it at:
+Chrome may assign **Alt+Shift+Z** automatically. If it conflicts with another extension, reassign it at:
 
 ```
 chrome://extensions/shortcuts
 ```
-
-Find **Stealth Assist → Capture screen and ask Claude**.
 
 ---
 
@@ -149,17 +154,19 @@ by-pass_plugin/
 │   │       └── options.ts     # Settings page logic
 │   ├── public/
 │   │   ├── manifest.json      # MV3 manifest
-│   │   ├── src/
-│   │   │   └── options.html   # Settings page HTML
-│   │   └── icons/
+│   │   └── src/
+│   │       └── options.html   # Settings page HTML
 │   ├── scripts/
 │   │   └── patch-firefox-manifest.js
 │   └── vite.config.ts
-└── server/
-    ├── main.go                # HTTP server, CORS, /api/ask + /api/screenshot
-    ├── render.yaml            # Render deployment blueprint
-    └── llm/
-        └── client.go          # Multi-provider LLM client (Anthropic, OpenAI, Gemini)
+├── server/
+│   ├── main.go                # HTTP server, CORS, /api/ask + /api/screenshot
+│   ├── render.yaml            # Render deployment blueprint
+│   └── llm/
+│       └── client.go          # Multi-provider LLM client (Anthropic, OpenAI, Gemini)
+└── site/
+    ├── index.html             # Landing page
+    └── style.css
 ```
 
 ---
