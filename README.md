@@ -92,28 +92,33 @@ To deploy your own instance to Render:
 
 ### 2. Extension
 
+**Option A — download the prebuilt zip (recommended):**
+
+Download the latest release zip from the [Releases page](https://github.com/CrimsonKarma44/stealth-assist/releases/latest) and unzip it, then:
+
+- **Chrome:** go to `chrome://extensions`, enable **Developer mode** (top-right toggle), click **Load unpacked** → select the unzipped folder
+- **Firefox:** go to `about:debugging` → **This Firefox**, click **Load Temporary Add-on…** → select `manifest.json` inside the unzipped folder. Note: temporary add-ons are cleared on browser restart
+
+**Option B — build from source:**
+
 ```bash
 cd extension
 npm install       # first time only
 ```
 
-**Chrome / Chromium:**
+Chrome:
 ```bash
 npm run build     # outputs to extension/dist/
 ```
-1. Go to `chrome://extensions`
-2. Enable **Developer mode** (top-right toggle)
-3. Click **Load unpacked** → select `extension/dist/` (the folder)
+Load: `chrome://extensions` → **Load unpacked** → select `extension/dist/`
 
-**Firefox / Firefox-based browsers:**
+Firefox:
 ```bash
 npm run build:firefox   # patches manifest for Firefox MV3 compatibility
 ```
-1. Go to `about:debugging` → **This Firefox**
-2. Click **Load Temporary Add-on…** → select `extension/dist/manifest.json` (the file, not the folder)
-3. Reload each session — temporary add-ons are cleared on browser restart
+Load: `about:debugging` → **This Firefox** → **Load Temporary Add-on…** → select `extension/dist/manifest.json`
 
-After any code change, re-run the appropriate build command and click **Refresh** on the extension card.
+After any code change, re-run the build command and click **Refresh** on the extension card.
 
 ### 3. Configure settings
 
