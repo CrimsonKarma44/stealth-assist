@@ -6,14 +6,17 @@
   "scripts": {
     "build": "vite build",
     "build:firefox": "vite build && node scripts/patch-firefox-manifest.js",
-    "watch": "vite build --watch"
+    "watch": "vite build --watch",
+    "test": "vitest run"
   },
   "dependencies": {
     "marked": "^18.0.5"
   },
   "devDependencies": {
     "@types/chrome": "^0.0.268",
+    "jsdom": "^25.0.0",
     "typescript": "^5.4.0",
-    "vite": "^5.2.0"
+    "vite": "^5.2.0",
+    "vitest": "^2.0.0"
   }
 }

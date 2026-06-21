@@ -425,8 +425,12 @@ func parseGemini(req *http.Request) (string, error) {
 
 // ── Shared HTTP ───────────────────────────────────────────────────────────────
 
+// HTTPClient is the HTTP client used for all external API calls.
+// Tests can override this to intercept requests.
+var HTTPClient = http.DefaultClient
+
 func doHTTP(req *http.Request) ([]byte, error) {
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := HTTPClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("http request: %w", err)
 	}
