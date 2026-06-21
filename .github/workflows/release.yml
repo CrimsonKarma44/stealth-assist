@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    name: Build & publish release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: extension/package-lock.json
+
+      - name: Install dependencies
+        working-directory: extension
+        run: npm ci
+
+      - name: Package Chrome extension
+        working-directory: extension
+        run: npm run package:chrome
+
+      - name: Package Firefox extension
+        working-directory: extension
+        run: npm run package:firefox
+
+      - name: Create GitHub Release
+        working-directory: extension
+        run: |
+          gh release create ${{ github.ref_name }} \
+            releases/stealth-assist-chrome.zip \
+            releases/stealth-assist-firefox.zip \
+            --title "Stealth Assist ${{ github.ref_name }}" \
+            --generate-notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
