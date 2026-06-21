@@ -7,7 +7,9 @@
     "build": "vite build",
     "build:firefox": "vite build && node scripts/patch-firefox-manifest.js",
     "watch": "vite build --watch",
-    "test": "vitest run"
+    "test": "vitest run",
+    "package:chrome": "npm run build && mkdir -p releases && cd dist && zip -r ../releases/stealth-assist-chrome.zip .",
+    "package:firefox": "npm run build:firefox && mkdir -p releases && cd dist && zip -r ../releases/stealth-assist-firefox.zip ."
   },
   "dependencies": {
     "marked": "^18.0.5"
