@@ -2,7 +2,17 @@
 
 A Chrome/Firefox (MV3) browser extension + Go backend that bypasses tab-visibility and focus-detection, and puts an AI chat overlay one shortcut away on any page. Built with TypeScript and Go. Supports Anthropic Claude, OpenAI, and Google Gemini — bring your own API key.
 
-**[stealth-assist-1.onrender.com](https://stealth-assist-1.onrender.com)** — landing page
+**[stealth-assist-1.onrender.com](https://stealth-assist-1.onrender.com)** — landing page & downloads
+
+![Stealth Assist landing page](./assets/site_landing_page.png)
+
+---
+
+## Quick demo
+
+![Stealth Assist overlay in action](./assets/animated_plugin_overlay.gif)
+
+Press **Ctrl+Shift+X** on any website → Claude appears in a draggable overlay → stay in flow.
 
 ---
 
@@ -47,13 +57,19 @@ Press **Ctrl+Shift+X** on any page to open the assistant:
 
 Responses are rendered as markdown (code blocks, bold, lists, etc.).
 
+#### Settings page
+
+![Stealth Assist settings configuration](./assets/setting_plugin_page.png)
+
+All configuration stays local: API keys are stored only in your browser's extension storage, never synced or uploaded.
+
 ### Screenshot / vision mode
 
 Two ways to capture the screen and ask the AI what's on it:
 
-| Method | Trigger | How it works |
-|---|---|---|
-| **Keyboard** | **Alt+Shift+Z** | Manifest command fires directly in the background service worker, preserving the user-gesture context required for `captureVisibleTab`. |
+| Method          | Trigger                       | How it works                                                                                                                                        |
+| --------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Keyboard**    | **Alt+Shift+Z**               | Manifest command fires directly in the background service worker, preserving the user-gesture context required for `captureVisibleTab`.             |
 | **Snap button** | Click **Snap** in the overlay | Content script sends a `SCREENSHOT_ASK` message; the `<all_urls>` host permission grants `captureVisibleTab` access without needing a user gesture. |
 
 In both cases the overlay hides before capture, then reappears with the AI's answer.
@@ -86,6 +102,7 @@ go run main.go     # listens on http://localhost:8080
 No `.env` file needed — API keys are sent per request from the extension.
 
 To deploy your own instance to Render:
+
 1. Push your fork to GitHub
 2. Render dashboard → **New → Web Service** → connect the repo
 3. Render auto-detects `server/render.yaml` — root dir `server`, build `go build -o server_bin main.go`
@@ -107,15 +124,19 @@ npm install       # first time only
 ```
 
 Chrome:
+
 ```bash
 npm run build     # outputs to extension/dist/
 ```
+
 Load: `chrome://extensions` → **Load unpacked** → select `extension/dist/`
 
 Firefox:
+
 ```bash
 npm run build:firefox   # patches manifest for Firefox MV3 compatibility
 ```
+
 Load: `about:debugging` → **This Firefox** → **Load Temporary Add-on…** → select `extension/dist/manifest.json`
 
 After any code change, re-run the build command and click **Refresh** on the extension card.
@@ -123,14 +144,15 @@ After any code change, re-run the build command and click **Refresh** on the ext
 ### 3. Configure settings
 
 On first install the settings page opens automatically. You can also reach it via:
+
 - The **⚙** button in the chat overlay
 - Right-clicking the extension icon → **Options**
 
-| Provider | Free tier | Where to get a key |
-|---|---|---|
-| **Google Gemini** | ✓ No credit card required | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
-| **Anthropic Claude** | Paid | [console.anthropic.com](https://console.anthropic.com/) |
-| **OpenAI** | Paid | [platform.openai.com](https://platform.openai.com/api-keys) |
+| Provider             | Free tier                 | Where to get a key                                            |
+| -------------------- | ------------------------- | ------------------------------------------------------------- |
+| **Google Gemini**    | ✓ No credit card required | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| **Anthropic Claude** | Paid                      | [console.anthropic.com](https://console.anthropic.com/)       |
+| **OpenAI**           | Paid                      | [platform.openai.com](https://platform.openai.com/api-keys)   |
 
 Select your provider, pick a model, paste your API key, click **Save**. Use **Test connection** to verify before closing the page.
 
@@ -178,22 +200,22 @@ by-pass_plugin/
 
 ## Development
 
-| Task | Command |
-|---|---|
-| Build extension (Chrome) | `cd extension && npm run build` |
-| Build extension (Firefox) | `cd extension && npm run build:firefox` |
-| Watch mode (auto-rebuild) | `cd extension && npm run watch` |
-| Run server | `cd server && go run main.go` |
-| Compile server binary | `cd server && go build -o server_bin main.go` |
+| Task                      | Command                                       |
+| ------------------------- | --------------------------------------------- |
+| Build extension (Chrome)  | `cd extension && npm run build`               |
+| Build extension (Firefox) | `cd extension && npm run build:firefox`       |
+| Watch mode (auto-rebuild) | `cd extension && npm run watch`               |
+| Run server                | `cd server && go run main.go`                 |
+| Compile server binary     | `cd server && go build -o server_bin main.go` |
 
 ---
 
 ## Permissions
 
-| Permission | Why |
-|---|---|
-| `activeTab` | Access the active tab's metadata |
-| `tabs` | Query active tab for screenshot capture |
-| `scripting` | Inject content scripts programmatically |
-| `storage` | Store API key and provider settings locally |
+| Permission                   | Why                                                                                           |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `activeTab`                  | Access the active tab's metadata                                                              |
+| `tabs`                       | Query active tab for screenshot capture                                                       |
+| `scripting`                  | Inject content scripts programmatically                                                       |
+| `storage`                    | Store API key and provider settings locally                                                   |
 | `<all_urls>` host permission | Required for `captureVisibleTab` on the Snap button path (no user gesture in message channel) |
