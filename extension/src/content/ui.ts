@@ -377,11 +377,27 @@ function matchesShortcut(e: KeyboardEvent, shortcut: string): boolean {
 
 // ── Global shortcuts ───────────────────────────────────────────────────────
 let screenshotShortcut = DEFAULT_SCREENSHOT_SHORTCUT;
-chrome.storage.local.get('screenshotShortcut', (items) => {
+let quietModeActive = false;
+
+chrome.storage.local.get(['screenshotShortcut', 'quietMode'], (items) => {
   screenshotShortcut = (items.screenshotShortcut as string) || DEFAULT_SCREENSHOT_SHORTCUT;
+  quietModeActive = !!(items.quietMode as boolean);
+});
+
+// Remove overlay and suppress it when quiet mode is toggled on; restore when toggled off
+chrome.storage.onChanged.addListener((changes) => {
+  if (!('quietMode' in changes)) return;
+  quietModeActive = !!changes.quietMode.newValue;
+  if (quietModeActive) {
+    overlay?.remove();
+    overlay = bodyEl = chatEl = inputEl = sendBtn = minBtn = copyBtn = null;
+    minimized = false;
+    lastRawReply = '';
+  }
 });
 
 document.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (quietModeActive) return;
   // Overlay toggle — Ctrl+Shift+X (fixed)
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
     e.preventDefault();

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stealth Assist</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: #0d0d12;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    #header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid #2d2d3a;
+      flex-shrink: 0;
+    }
+
+    #header-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      letter-spacing: .6px;
+    }
+
+    #header-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .hbtn {
+      background: none;
+      border: none;
+      color: #555;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0 3px;
+      line-height: 1;
+    }
+
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px 16px 6px;
+      scrollbar-width: thin;
+      scrollbar-color: #3a3a4a transparent;
+    }
+
+    #chat::-webkit-scrollbar { width: 3px; }
+    #chat::-webkit-scrollbar-track { background: transparent; }
+    #chat::-webkit-scrollbar-thumb { background: #3a3a4a; border-radius: 2px; }
+
+    .msg { margin-bottom: 16px; }
+    .msg-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .msg-label.user { color: #6b7280; }
+    .msg-label.asst { color: #60a5fa; }
+    .msg-body { font-size: 13.5px; line-height: 1.65; }
+    .msg-body.user { color: #9ca3af; opacity: .72; }
+
+    .md h1,.md h2,.md h3{color:#f1f5f9;margin:10px 0 5px;font-size:14px}
+    .md p{margin:5px 0}
+    .md code{background:#1e1e2e;color:#c4b5fd;padding:2px 5px;border-radius:4px;font-size:12px;font-family:'Fira Code',monospace}
+    .md pre{background:#1e1e2e;border-radius:6px;padding:10px 12px;overflow-x:auto;margin:8px 0}
+    .md pre code{background:none;padding:0;color:#e2e8f0;font-size:12px}
+    .md ul,.md ol{padding-left:18px;margin:5px 0}
+    .md li{margin:3px 0}
+    .md strong{color:#f1f5f9}
+    .md em{color:#a5b4fc}
+    .md blockquote{border-left:2px solid #374151;margin:8px 0;padding-left:10px;color:#6b7280}
+    .md a{color:#60a5fa;text-decoration:none}
+    .md hr{border:none;border-top:1px solid #2d2d3a;margin:10px 0}
+
+    #action-bar {
+      display: flex;
+      gap: 8px;
+      padding: 4px 16px 8px;
+      flex-shrink: 0;
+    }
+
+    .abtn {
+      background: none;
+      border: 1px solid #2d2d3a;
+      border-radius: 5px;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: 11px;
+      padding: 3px 10px;
+    }
+
+    #snap-btn { color: #60a5fa; }
+
+    #input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+      padding: 8px 12px 12px;
+      border-top: 1px solid #2d2d3a;
+      flex-shrink: 0;
+    }
+
+    #input {
+      background: #1a1a24;
+      border: 1px solid #2d2d3a;
+      border-radius: 7px;
+      color: #e2e8f0;
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      flex: 1;
+      line-height: 1.5;
+      max-height: 100px;
+      padding: 7px 10px;
+      outline: none;
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    #input::-webkit-scrollbar { display: none; }
+    #input::placeholder { color: #4a4a5a; }
+
+    #send-btn {
+      background: #2563eb;
+      border: none;
+      border-radius: 7px;
+      color: #fff;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 7px 14px;
+      align-self: flex-end;
+      flex-shrink: 0;
+      transition: opacity .15s;
+    }
+    #send-btn:disabled { opacity: .45; cursor: default; }
+
+    #status-bar {
+      font-size: 11px;
+      color: #6b7280;
+      padding: 0 16px 6px;
+      flex-shrink: 0;
+      min-height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="header">
+      <span id="header-title">Stealth Assist — Quiet Mode</span>
+      <div id="header-actions">
+        <button class="hbtn" id="settings-btn" title="Settings">⚙</button>
+      </div>
+    </div>
+
+    <div id="chat"></div>
+
+    <div id="action-bar">
+      <button class="abtn" id="copy-btn">Copy</button>
+      <button class="abtn" id="clear-btn">Clear</button>
+      <button class="abtn" id="snap-btn">Snap</button>
+    </div>
+
+    <div id="status-bar"></div>
+
+    <div id="input-row">
+      <textarea id="input" rows="1" placeholder="Ask anything… (Enter sends, Shift+Enter = newline)"></textarea>
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script src="quiet.js"></script>
+</body>
+</html>

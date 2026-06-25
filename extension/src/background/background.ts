@@ -2,6 +2,33 @@
 // Conversation history is persisted to chrome.storage.local so it survives
 // service worker suspension between messages.
 
+// ── Quiet mode state ───────────────────────────────────────────────────────
+let quietWindowId: number | null = null;
+let mainWindowId:  number | null = null;
+
+chrome.action.onClicked.addListener((tab) => {
+  mainWindowId = tab.windowId ?? null;
+
+  if (quietWindowId !== null) {
+    chrome.windows.remove(quietWindowId);
+    quietWindowId = null;
+    chrome.storage.local.set({ quietMode: false });
+  } else {
+    chrome.windows.create(
+      { url: chrome.runtime.getURL('src/quiet.html'), type: 'popup', width: 460, height: 640, focused: true },
+      (win) => { quietWindowId = win?.id ?? null; }
+    );
+    chrome.storage.local.set({ quietMode: true });
+  }
+});
+
+chrome.windows.onRemoved.addListener((windowId) => {
+  if (windowId === quietWindowId) {
+    quietWindowId = null;
+    chrome.storage.local.set({ quietMode: false });
+  }
+});
+
 // ── First install: open settings page ─────────────────────────────────────
 chrome.runtime.onInstalled.addListener((details) => {
   if (details.reason === 'install') {
@@ -96,7 +123,12 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         return;
       }
 
-      chrome.tabs.captureVisibleTab({ format: 'png' })
+      const capturePromise =
+        quietWindowId !== null && mainWindowId !== null
+          ? chrome.tabs.captureVisibleTab(mainWindowId, { format: 'png' })
+          : chrome.tabs.captureVisibleTab({ format: 'png' });
+
+      capturePromise
         .then(dataUrl => {
           const base64 = dataUrl.replace(/^data:image\/png;base64,/, '');
           return fetch(`${settings.serverUrl}/api/screenshot`, {

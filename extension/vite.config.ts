@@ -8,7 +8,8 @@ export default defineConfig({
         background: resolve(__dirname, 'src/background/background.ts'),
         inject: resolve(__dirname, 'src/content/inject.ts'),
         ui: resolve(__dirname, 'src/content/ui.ts'),
-        options: resolve(__dirname, 'src/options/options.ts')
+        options: resolve(__dirname, 'src/options/options.ts'),
+        quiet: resolve(__dirname, 'src/quiet/quiet.ts'),
       },
       output: {
         entryFileNames: 'src/[name].js',
