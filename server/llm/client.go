@@ -23,6 +23,15 @@ type Config struct {
 	APIKey   string
 }
 
+// Retired Gemini model IDs still sent by older extension builds / saved settings.
+var geminiModelAliases = map[string]string{
+	"gemini-2.0-flash":      "gemini-3.6-flash",
+	"gemini-2.0-flash-lite": "gemini-3.6-flash",
+	"gemini-1.5-flash":      "gemini-3.6-flash",
+	"gemini-1.5-flash-8b":   "gemini-3.1-flash-lite",
+	"gemini-1.5-pro":        "gemini-2.5-pro",
+}
+
 func (c *Config) resolve() {
 	if c.Provider == "" {
 		c.Provider = "anthropic"
@@ -35,9 +44,14 @@ func (c *Config) resolve() {
 		case "openai":
 			c.Model = "gpt-4o-mini"
 		case "google":
-			c.Model = "gemini-2.0-flash"
+			c.Model = "gemini-3.6-flash"
 		default:
 			c.Model = "claude-opus-4-8"
+		}
+	}
+	if c.Provider == "google" {
+		if next, ok := geminiModelAliases[c.Model]; ok {
+			c.Model = next
 		}
 	}
 }

@@ -1,8 +1,11 @@
 const MODELS: Record<string, { label: string; value: string }[]> = {
   google: [
-    { label: 'Gemini 2.0 Flash (recommended)', value: 'gemini-2.0-flash' },
-    { label: 'Gemini 1.5 Flash',               value: 'gemini-1.5-flash' },
-    { label: 'Gemini 1.5 Flash 8B (lightest)',  value: 'gemini-1.5-flash-8b' },
+    { label: 'Gemini 3.6 Flash (recommended)', value: 'gemini-3.6-flash' },
+    { label: 'Gemini 3.5 Flash',               value: 'gemini-3.5-flash' },
+    { label: 'Gemini 3.5 Flash-Lite',          value: 'gemini-3.5-flash-lite' },
+    { label: 'Gemini 3.1 Flash-Lite (lightest)', value: 'gemini-3.1-flash-lite' },
+    { label: 'Gemini 2.5 Flash',               value: 'gemini-2.5-flash' },
+    { label: 'Gemini 2.5 Pro',                 value: 'gemini-2.5-pro' },
   ],
   anthropic: [
     { label: 'Claude Opus 4.8',    value: 'claude-opus-4-8' },
@@ -15,6 +18,19 @@ const MODELS: Record<string, { label: string; value: string }[]> = {
     { label: 'o4-mini',           value: 'o4-mini' },
   ],
 };
+
+// Retired Gemini model IDs still present in some users' chrome.storage.
+const GEMINI_MODEL_ALIASES: Record<string, string> = {
+  'gemini-2.0-flash':      'gemini-3.6-flash',
+  'gemini-2.0-flash-lite': 'gemini-3.6-flash',
+  'gemini-1.5-flash':      'gemini-3.6-flash',
+  'gemini-1.5-flash-8b':   'gemini-3.1-flash-lite',
+  'gemini-1.5-pro':        'gemini-2.5-pro',
+};
+
+function migrateGeminiModel(model: string): string {
+  return GEMINI_MODEL_ALIASES[model] ?? model;
+}
 
 const HINTS: Record<string, string> = {
   google:    'Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> — no credit card required.',
@@ -123,9 +139,15 @@ function setStatus(cls: 'ok' | 'err' | '', text: string) {
 chrome.storage.local.get(['serverUrl', 'provider', 'model', 'apiKey', 'screenshotShortcut'], (items) => {
   const serverUrl         = (items.serverUrl         as string) || '';
   const provider          = (items.provider          as string) || 'google';
-  const model             = (items.model             as string) || '';
+  const rawModel          = (items.model             as string) || '';
+  const model             = provider === 'google' ? migrateGeminiModel(rawModel) : rawModel;
   const apiKey            = (items.apiKey            as string) || '';
   const screenshotShortcut = (items.screenshotShortcut as string) || 'Alt+Shift+Z';
+
+  // Persist migration so chat/screenshot use the new model without re-saving
+  if (model && model !== rawModel) {
+    chrome.storage.local.set({ model });
+  }
 
   serverUrlEl.value        = serverUrl;
   providerEl.value         = provider;

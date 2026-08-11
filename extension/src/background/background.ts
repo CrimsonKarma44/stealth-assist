@@ -42,12 +42,27 @@ type Turn = { role: string; content: string };
 
 const DEFAULT_SERVER = 'https://stealth-assist.onrender.com';
 
+// Retired Gemini model IDs still present in some users' chrome.storage.
+const GEMINI_MODEL_ALIASES: Record<string, string> = {
+  'gemini-2.0-flash':      'gemini-3.6-flash',
+  'gemini-2.0-flash-lite': 'gemini-3.6-flash',
+  'gemini-1.5-flash':      'gemini-3.6-flash',
+  'gemini-1.5-flash-8b':   'gemini-3.1-flash-lite',
+  'gemini-1.5-pro':        'gemini-2.5-pro',
+};
+
 function getSettings(): Promise<Settings> {
   return new Promise((resolve) => {
     chrome.storage.local.get(['provider', 'model', 'apiKey', 'serverUrl', 'configured'], (items) => {
+      const provider = (items.provider as string) || '';
+      let model = (items.model as string) || '';
+      if (provider === 'google' && GEMINI_MODEL_ALIASES[model]) {
+        model = GEMINI_MODEL_ALIASES[model];
+        chrome.storage.local.set({ model });
+      }
       resolve({
-        provider:   (items.provider   as string)  || '',
-        model:      (items.model      as string)  || '',
+        provider,
+        model,
         apiKey:     (items.apiKey     as string)  || '',
         serverUrl:  (items.serverUrl  as string)  || DEFAULT_SERVER,
         configured: (items.configured as boolean) || false,

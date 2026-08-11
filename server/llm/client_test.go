@@ -55,8 +55,25 @@ func TestConfigResolveOpenAIDefault(t *testing.T) {
 func TestConfigResolveGoogleDefault(t *testing.T) {
 	cfg := Config{Provider: "google", APIKey: "k"}
 	cfg.resolve()
-	if cfg.Model != "gemini-2.0-flash" {
-		t.Errorf("model: got %q, want %q", cfg.Model, "gemini-2.0-flash")
+	if cfg.Model != "gemini-3.6-flash" {
+		t.Errorf("model: got %q, want %q", cfg.Model, "gemini-3.6-flash")
+	}
+}
+
+func TestConfigResolveGoogleMigratesRetiredModels(t *testing.T) {
+	cases := map[string]string{
+		"gemini-2.0-flash":      "gemini-3.6-flash",
+		"gemini-2.0-flash-lite": "gemini-3.6-flash",
+		"gemini-1.5-flash":      "gemini-3.6-flash",
+		"gemini-1.5-flash-8b":   "gemini-3.1-flash-lite",
+		"gemini-1.5-pro":        "gemini-2.5-pro",
+	}
+	for old, want := range cases {
+		cfg := Config{Provider: "google", Model: old, APIKey: "k"}
+		cfg.resolve()
+		if cfg.Model != want {
+			t.Errorf("%s: got %q, want %q", old, cfg.Model, want)
+		}
 	}
 }
 
