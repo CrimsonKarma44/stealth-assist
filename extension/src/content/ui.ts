@@ -8,8 +8,56 @@ let inputEl: HTMLTextAreaElement | null = null;
 let sendBtn: HTMLButtonElement | null = null;
 let minBtn: HTMLButtonElement | null = null;
 let copyBtn: HTMLButtonElement | null = null;
+let titleEl: HTMLSpanElement | null = null;
 let minimized = false;
 let lastRawReply = '';
+
+// Active model display (updated from chrome.storage)
+let asstName = 'Assistant';
+let modelTitle = '';
+
+function providerDisplayName(provider: string): string {
+  switch (provider) {
+    case 'google':    return 'Gemini';
+    case 'xai':       return 'Grok';
+    case 'openai':    return 'GPT';
+    case 'anthropic': return 'Claude';
+    default:          return 'Assistant';
+  }
+}
+
+function modelShortLabel(model: string): string {
+  if (!model) return '';
+  // Prefer a readable short form; fall back to the raw id
+  return model
+    .replace(/^claude-/, 'Claude ')
+    .replace(/^gemini-/, 'Gemini ')
+    .replace(/^grok-/, 'Grok ')
+    .replace(/^gpt-/, 'GPT-')
+    .replace(/-0309-(non-)?reasoning$/, '')
+    .replace(/-/g, ' ');
+}
+
+function refreshAssistantLabel(provider?: string, model?: string) {
+  if (provider !== undefined) asstName = providerDisplayName(provider);
+  if (model !== undefined) modelTitle = modelShortLabel(model);
+  if (titleEl) {
+    titleEl.textContent = modelTitle
+      ? `Stealth Assist · ${modelTitle}`
+      : 'Stealth Assist';
+  }
+}
+
+function loadAssistantSettings() {
+  chrome.storage.local.get(['provider', 'model'], (items) => {
+    refreshAssistantLabel(
+      (items.provider as string) || '',
+      (items.model as string) || '',
+    );
+  });
+}
+
+loadAssistantSettings();
 
 // Drag state
 let isDragging = false;
@@ -40,7 +88,7 @@ function appendMessage(role: 'user' | 'assistant', text: string) {
     color: ${role === 'user' ? '#6b7280' : '#60a5fa'};
     pointer-events: none;
   `;
-  label.textContent = role === 'user' ? 'You' : 'Claude';
+  label.textContent = role === 'user' ? 'You' : asstName;
 
   const content = document.createElement('div');
   content.style.cssText = 'font-size: 13.5px; line-height: 1.65;';
@@ -132,8 +180,10 @@ function buildOverlay() {
     if (isDragging) header.style.cursor = 'grab';
   });
 
-  const titleEl = document.createElement('span');
-  titleEl.textContent = 'Stealth Assist';
+  titleEl = document.createElement('span');
+  titleEl.textContent = modelTitle
+    ? `Stealth Assist · ${modelTitle}`
+    : 'Stealth Assist';
   titleEl.style.cssText = 'font-size:11px;font-weight:600;color:#6b7280;letter-spacing:.6px;pointer-events:none;';
 
   const headerBtns = document.createElement('div');
@@ -246,7 +296,7 @@ function buildOverlay() {
 
   closeBtn.onclick = () => {
     overlay?.remove();
-    overlay = bodyEl = chatEl = inputEl = sendBtn = minBtn = copyBtn = null;
+    overlay = bodyEl = chatEl = inputEl = sendBtn = minBtn = copyBtn = titleEl = null;
     minimized = false;
     lastRawReply = '';
   };
@@ -283,7 +333,7 @@ function buildOverlay() {
 
     const thinking = document.createElement('div');
     thinking.style.cssText = 'color:#4a4a5a;font-style:italic;font-size:13px;margin-bottom:10px;';
-    thinking.textContent = 'Claude is thinking…';
+    thinking.textContent = `${asstName} is thinking…`;
     chatEl!.appendChild(thinking);
     chatEl!.scrollTop = chatEl!.scrollHeight;
 
@@ -384,15 +434,26 @@ chrome.storage.local.get(['screenshotShortcut', 'quietMode'], (items) => {
   quietModeActive = !!(items.quietMode as boolean);
 });
 
-// Remove overlay and suppress it when quiet mode is toggled on; restore when toggled off
-chrome.storage.onChanged.addListener((changes) => {
-  if (!('quietMode' in changes)) return;
-  quietModeActive = !!changes.quietMode.newValue;
-  if (quietModeActive) {
-    overlay?.remove();
-    overlay = bodyEl = chatEl = inputEl = sendBtn = minBtn = copyBtn = null;
-    minimized = false;
-    lastRawReply = '';
+// Keep model label in sync + quiet-mode overlay teardown
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+
+  if (changes.provider || changes.model) {
+    loadAssistantSettings();
+  }
+
+  if (changes.screenshotShortcut) {
+    screenshotShortcut = (changes.screenshotShortcut.newValue as string) || DEFAULT_SCREENSHOT_SHORTCUT;
+  }
+
+  if ('quietMode' in changes) {
+    quietModeActive = !!changes.quietMode.newValue;
+    if (quietModeActive) {
+      overlay?.remove();
+      overlay = bodyEl = chatEl = inputEl = sendBtn = minBtn = copyBtn = titleEl = null;
+      minimized = false;
+      lastRawReply = '';
+    }
   }
 });
 

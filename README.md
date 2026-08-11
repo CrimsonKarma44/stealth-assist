@@ -1,6 +1,6 @@
 # Stealth Assist
 
-A Chrome/Firefox (MV3) browser extension + Go backend that bypasses tab-visibility and focus-detection, and puts an AI chat overlay one shortcut away on any page. Built with TypeScript and Go. Supports Anthropic Claude, OpenAI, and Google Gemini — bring your own API key.
+A Chrome/Firefox (MV3) browser extension + Go backend that bypasses tab-visibility and focus-detection, and puts an AI chat overlay one shortcut away on any page. Built with TypeScript and Go. Supports Anthropic Claude, OpenAI, Google Gemini, and xAI Grok — bring your own API key.
 
 **[stealth-assist-1.onrender.com](https://stealth-assist-1.onrender.com)** — landing page & downloads
 
@@ -151,6 +151,7 @@ On first install the settings page opens automatically. You can also reach it vi
 | Provider             | Free tier                 | Where to get a key                                            |
 | -------------------- | ------------------------- | ------------------------------------------------------------- |
 | **Google Gemini**    | ✓ No credit card required | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
+| **xAI Grok**         | Paid                      | [console.x.ai](https://console.x.ai/)                         |
 | **Anthropic Claude** | Paid                      | [console.anthropic.com](https://console.anthropic.com/)       |
 | **OpenAI**           | Paid                      | [platform.openai.com](https://platform.openai.com/api-keys)   |
 
@@ -190,7 +191,7 @@ by-pass_plugin/
 │   ├── main.go                # HTTP server, CORS, /api/ask + /api/screenshot
 │   ├── render.yaml            # Render deployment blueprint
 │   └── llm/
-│       └── client.go          # Multi-provider LLM client (Anthropic, OpenAI, Gemini)
+│       └── client.go          # Multi-provider LLM client (Anthropic, OpenAI, Gemini, xAI Grok)
 └── site/
     ├── index.html             # Landing page
     └── style.css

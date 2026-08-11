@@ -18,7 +18,7 @@ type Message struct {
 // Config carries per-request provider settings from the browser extension.
 // If Provider and APIKey are both empty the server falls back to ANTHROPIC_API_KEY env.
 type Config struct {
-	Provider string // "anthropic" | "openai" | "google"
+	Provider string // "anthropic" | "openai" | "google" | "xai"
 	Model    string
 	APIKey   string
 }
@@ -36,8 +36,13 @@ func (c *Config) resolve() {
 	if c.Provider == "" {
 		c.Provider = "anthropic"
 	}
-	if c.APIKey == "" && c.Provider == "anthropic" {
-		c.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+	if c.APIKey == "" {
+		switch c.Provider {
+		case "anthropic":
+			c.APIKey = os.Getenv("ANTHROPIC_API_KEY")
+		case "xai":
+			c.APIKey = os.Getenv("XAI_API_KEY")
+		}
 	}
 	if c.Model == "" {
 		switch c.Provider {
@@ -45,6 +50,8 @@ func (c *Config) resolve() {
 			c.Model = "gpt-4o-mini"
 		case "google":
 			c.Model = "gemini-3.6-flash"
+		case "xai":
+			c.Model = "grok-4.5"
 		default:
 			c.Model = "claude-opus-4-8"
 		}
@@ -70,6 +77,8 @@ func AskLLM(messages []Message, cfg Config) (string, error) {
 	switch cfg.Provider {
 	case "openai":
 		return askOpenAI(messages, cfg)
+	case "xai":
+		return askGrok(messages, cfg)
 	case "google":
 		return askGemini(messages, cfg)
 	default:
@@ -87,6 +96,8 @@ func AskVision(imageBase64 string, cfg Config) (string, error) {
 	switch cfg.Provider {
 	case "openai":
 		return askOpenAIVision(imageBase64, cfg)
+	case "xai":
+		return askGrokVision(imageBase64, cfg)
 	case "google":
 		return askGeminiVision(imageBase64, cfg)
 	default:
@@ -257,7 +268,29 @@ type openAIResponse struct {
 	} `json:"error"`
 }
 
+const (
+	openAIChatURL = "https://api.openai.com/v1/chat/completions"
+	xaiChatURL    = "https://api.x.ai/v1/chat/completions"
+)
+
 func askOpenAI(messages []Message, cfg Config) (string, error) {
+	return askOpenAICompatible(messages, cfg, openAIChatURL, "openai")
+}
+
+func askOpenAIVision(imageBase64 string, cfg Config) (string, error) {
+	return askOpenAICompatibleVision(imageBase64, cfg, openAIChatURL, "openai")
+}
+
+// xAI Grok uses an OpenAI-compatible chat completions API.
+func askGrok(messages []Message, cfg Config) (string, error) {
+	return askOpenAICompatible(messages, cfg, xaiChatURL, "xai")
+}
+
+func askGrokVision(imageBase64 string, cfg Config) (string, error) {
+	return askOpenAICompatibleVision(imageBase64, cfg, xaiChatURL, "xai")
+}
+
+func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string) (string, error) {
 	msgs := []openAIMessage{{Role: "system", Content: systemPrompt}}
 	for _, m := range messages {
 		msgs = append(msgs, openAIMessage{Role: m.Role, Content: m.Content})
@@ -268,17 +301,17 @@ func askOpenAI(messages []Message, cfg Config) (string, error) {
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("content-type", "application/json")
 
-	return parseOpenAI(req)
+	return parseOpenAICompatible(req, label)
 }
 
-func askOpenAIVision(imageBase64 string, cfg Config) (string, error) {
+func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label string) (string, error) {
 	msgs := []openAIMessage{
 		{Role: "system", Content: visionPrompt},
 		{Role: "user", Content: []openAIContentPart{
@@ -292,17 +325,17 @@ func askOpenAIVision(imageBase64 string, cfg Config) (string, error) {
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", "https://api.openai.com/v1/chat/completions", bytes.NewReader(body))
+	req, err := http.NewRequest("POST", endpoint, bytes.NewReader(body))
 	if err != nil {
 		return "", err
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("content-type", "application/json")
 
-	return parseOpenAI(req)
+	return parseOpenAICompatible(req, label)
 }
 
-func parseOpenAI(req *http.Request) (string, error) {
+func parseOpenAICompatible(req *http.Request, label string) (string, error) {
 	raw, err := doHTTP(req)
 	if err != nil {
 		return "", err
@@ -312,10 +345,10 @@ func parseOpenAI(req *http.Request) (string, error) {
 		return "", fmt.Errorf("decode response: %w", err)
 	}
 	if or.Error != nil {
-		return "", fmt.Errorf("openai error %s: %s", or.Error.Type, or.Error.Message)
+		return "", fmt.Errorf("%s error %s: %s", label, or.Error.Type, or.Error.Message)
 	}
 	if len(or.Choices) == 0 {
-		return "", fmt.Errorf("no choices in openai response")
+		return "", fmt.Errorf("no choices in %s response", label)
 	}
 	return or.Choices[0].Message.Content, nil
 }

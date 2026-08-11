@@ -7,6 +7,12 @@ const MODELS: Record<string, { label: string; value: string }[]> = {
     { label: 'Gemini 2.5 Flash',               value: 'gemini-2.5-flash' },
     { label: 'Gemini 2.5 Pro',                 value: 'gemini-2.5-pro' },
   ],
+  xai: [
+    { label: 'Grok 4.5 (recommended)',              value: 'grok-4.5' },
+    { label: 'Grok 4.3',                             value: 'grok-4.3' },
+    { label: 'Grok 4.20 (non-reasoning)',            value: 'grok-4.20-0309-non-reasoning' },
+    { label: 'Grok 4.20 (reasoning)',                value: 'grok-4.20-0309-reasoning' },
+  ],
   anthropic: [
     { label: 'Claude Opus 4.8',    value: 'claude-opus-4-8' },
     { label: 'Claude Sonnet 4.6',  value: 'claude-sonnet-4-6' },
@@ -34,6 +40,7 @@ function migrateGeminiModel(model: string): string {
 
 const HINTS: Record<string, string> = {
   google:    'Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> — no credit card required.',
+  xai:       'Get a key at <a href="https://console.x.ai/" target="_blank">console.x.ai</a>.',
   anthropic: 'Get a key at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>.',
   openai:    'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>.',
 };

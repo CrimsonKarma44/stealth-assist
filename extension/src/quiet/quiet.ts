@@ -57,8 +57,54 @@ const clearBtn  = document.getElementById('clear-btn') as HTMLButtonElement;
 const snapBtn   = document.getElementById('snap-btn') as HTMLButtonElement;
 const statusBar = document.getElementById('status-bar')!;
 const settingsBtn = document.getElementById('settings-btn') as HTMLButtonElement;
+const headerTitle = document.getElementById('header-title')!;
 
 let lastRawReply = '';
+let asstName = 'Assistant';
+let modelTitle = '';
+
+function providerDisplayName(provider: string): string {
+  switch (provider) {
+    case 'google':    return 'Gemini';
+    case 'xai':       return 'Grok';
+    case 'openai':    return 'GPT';
+    case 'anthropic': return 'Claude';
+    default:          return 'Assistant';
+  }
+}
+
+function modelShortLabel(model: string): string {
+  if (!model) return '';
+  return model
+    .replace(/^claude-/, 'Claude ')
+    .replace(/^gemini-/, 'Gemini ')
+    .replace(/^grok-/, 'Grok ')
+    .replace(/^gpt-/, 'GPT-')
+    .replace(/-0309-(non-)?reasoning$/, '')
+    .replace(/-/g, ' ');
+}
+
+function refreshHeader() {
+  headerTitle.textContent = modelTitle
+    ? `Stealth Assist · ${modelTitle}`
+    : 'Stealth Assist — Quiet Mode';
+}
+
+function loadAssistantSettings() {
+  chrome.storage.local.get(['provider', 'model'], (items) => {
+    asstName = providerDisplayName((items.provider as string) || '');
+    modelTitle = modelShortLabel((items.model as string) || '');
+    refreshHeader();
+  });
+}
+
+loadAssistantSettings();
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && (changes.provider || changes.model)) {
+    loadAssistantSettings();
+  }
+});
 
 function appendMessage(role: 'user' | 'assistant', text: string) {
   const msg = document.createElement('div');
@@ -66,7 +112,7 @@ function appendMessage(role: 'user' | 'assistant', text: string) {
 
   const label = document.createElement('div');
   label.className = `msg-label ${role === 'user' ? 'user' : 'asst'}`;
-  label.textContent = role === 'user' ? 'You' : 'Claude';
+  label.textContent = role === 'user' ? 'You' : asstName;
 
   const body = document.createElement('div');
   body.className = `msg-body ${role === 'user' ? 'user' : ''}`;
@@ -98,7 +144,7 @@ async function submit() {
   inputEl.value = '';
   inputEl.style.height = 'auto';
   sendBtn.disabled = true;
-  setStatus('Claude is thinking…');
+  setStatus(`${asstName} is thinking…`);
 
   try {
     const res = await chrome.runtime.sendMessage({ type: 'ASK_LLM', payload: prompt });
