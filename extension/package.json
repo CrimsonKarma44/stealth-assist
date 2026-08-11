@@ -1,6 +1,6 @@
 {
   "name": "stealth-assist",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "Stealth Assist Extension",
   "scripts": {
