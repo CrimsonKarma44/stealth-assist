@@ -169,6 +169,7 @@
     <div class="field">
       <label for="provider">Provider</label>
       <select id="provider">
+        <option value="openrouter">OpenRouter (free &amp; paid)</option>
         <option value="google">Google Gemini (free tier available)</option>
         <option value="xai">xAI Grok</option>
         <option value="anthropic">Anthropic Claude</option>
@@ -179,6 +180,12 @@
     <div class="field">
       <label for="model">Model</label>
       <select id="model"></select>
+    </div>
+
+    <div class="field" id="customModelField" style="display:none;">
+      <label for="customModel">Custom OpenRouter model ID</label>
+      <input type="text" id="customModel" placeholder="e.g. deepseek/deepseek-chat-v3:free" autocomplete="off" />
+      <p class="hint">Paste any model id from <a href="https://openrouter.ai/models" target="_blank" rel="noopener">openrouter.ai/models</a>.</p>
     </div>
 
     <div class="field">

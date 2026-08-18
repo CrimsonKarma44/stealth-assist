@@ -68,6 +68,14 @@ func TestConfigResolveXAIDefault(t *testing.T) {
 	}
 }
 
+func TestConfigResolveOpenRouterDefault(t *testing.T) {
+	cfg := Config{Provider: "openrouter", APIKey: "k"}
+	cfg.resolve()
+	if cfg.Model != "openrouter/free" {
+		t.Errorf("model: got %q, want %q", cfg.Model, "openrouter/free")
+	}
+}
+
 func TestConfigResolveGoogleMigratesRetiredModels(t *testing.T) {
 	cases := map[string]string{
 		"gemini-2.0-flash":      "gemini-3.6-flash",
@@ -284,6 +292,55 @@ func TestAskGrokVisionSuccess(t *testing.T) {
 	}
 	if reply != "grok vision reply" {
 		t.Errorf("reply: got %q, want %q", reply, "grok vision reply")
+	}
+}
+
+// ── OpenRouter text / vision ──────────────────────────────────────────────────
+
+func TestAskOpenRouterSuccess(t *testing.T) {
+	var gotTitle, gotReferer string
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		gotTitle = r.Header.Get("X-Title")
+		gotReferer = r.Header.Get("HTTP-Referer")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{"content": "openrouter reply"}},
+			},
+		})
+	})
+	defer cleanup()
+
+	reply, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{Provider: "openrouter", APIKey: "test"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reply != "openrouter reply" {
+		t.Errorf("reply: got %q, want %q", reply, "openrouter reply")
+	}
+	if gotTitle != "Stealth Assist" {
+		t.Errorf("X-Title: got %q, want %q", gotTitle, "Stealth Assist")
+	}
+	if gotReferer == "" {
+		t.Error("expected HTTP-Referer header for OpenRouter")
+	}
+}
+
+func TestAskOpenRouterVisionSuccess(t *testing.T) {
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{"content": "openrouter vision reply"}},
+			},
+		})
+	})
+	defer cleanup()
+
+	reply, err := AskVision("base64img", Config{Provider: "openrouter", APIKey: "test"})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reply != "openrouter vision reply" {
+		t.Errorf("reply: got %q, want %q", reply, "openrouter vision reply")
 	}
 }
 

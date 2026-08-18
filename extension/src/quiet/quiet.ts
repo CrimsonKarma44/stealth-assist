@@ -65,17 +65,19 @@ let modelTitle = '';
 
 function providerDisplayName(provider: string): string {
   switch (provider) {
-    case 'google':    return 'Gemini';
-    case 'xai':       return 'Grok';
-    case 'openai':    return 'GPT';
-    case 'anthropic': return 'Claude';
-    default:          return 'Assistant';
+    case 'openrouter': return 'OpenRouter';
+    case 'google':     return 'Gemini';
+    case 'xai':        return 'Grok';
+    case 'openai':     return 'GPT';
+    case 'anthropic':  return 'Claude';
+    default:           return 'Assistant';
   }
 }
 
 function modelShortLabel(model: string): string {
   if (!model) return '';
-  return model
+  const leaf = model.includes('/') ? model.split('/').pop()! : model;
+  return leaf
     .replace(/^claude-/, 'Claude ')
     .replace(/^gemini-/, 'Gemini ')
     .replace(/^grok-/, 'Grok ')

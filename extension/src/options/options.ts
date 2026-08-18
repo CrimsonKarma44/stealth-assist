@@ -1,4 +1,15 @@
+const CUSTOM_MODEL_VALUE = '__custom__';
+
 const MODELS: Record<string, { label: string; value: string }[]> = {
+  openrouter: [
+    { label: 'Auto free router (recommended)',          value: 'openrouter/free' },
+    { label: 'NVIDIA Nemotron 3.5 Lightning (free)',     value: 'nvidia/nemotron-3.5-lightning:free' },
+    { label: 'Poolside Laguna S 2.1 (free)',             value: 'poolside/laguna-s-2.1:free' },
+    { label: 'Liquid LFM 2.5 (free)',                    value: 'liquid/lfm-2.5-2.6b:free' },
+    { label: 'Google Gemini 3.6 Flash (paid, vision)',   value: 'google/gemini-3.6-flash' },
+    { label: 'xAI Grok 4.6 (paid, vision)',              value: 'x-ai/grok-4.6' },
+    { label: 'Custom…',                                 value: CUSTOM_MODEL_VALUE },
+  ],
   google: [
     { label: 'Gemini 3.6 Flash (recommended)', value: 'gemini-3.6-flash' },
     { label: 'Gemini 3.5 Flash',               value: 'gemini-3.5-flash' },
@@ -39,15 +50,18 @@ function migrateGeminiModel(model: string): string {
 }
 
 const HINTS: Record<string, string> = {
-  google:    'Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> — no credit card required.',
-  xai:       'Get a key at <a href="https://console.x.ai/" target="_blank">console.x.ai</a>.',
-  anthropic: 'Get a key at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>.',
-  openai:    'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>.',
+  openrouter: 'Get a free key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> — free models available; paid credits unlock stronger models.',
+  google:     'Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> — no credit card required.',
+  xai:        'Get a key at <a href="https://console.x.ai/" target="_blank">console.x.ai</a>.',
+  anthropic:  'Get a key at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>.',
+  openai:     'Get a key at <a href="https://platform.openai.com/api-keys" target="_blank">platform.openai.com</a>.',
 };
 
 const serverUrlEl       = document.getElementById('serverUrl')         as HTMLInputElement;
 const providerEl        = document.getElementById('provider')          as HTMLSelectElement;
 const modelEl           = document.getElementById('model')             as HTMLSelectElement;
+const customModelField  = document.getElementById('customModelField')  as HTMLDivElement;
+const customModelEl     = document.getElementById('customModel')       as HTMLInputElement;
 const apiKeyEl          = document.getElementById('apiKey')            as HTMLInputElement;
 const toggleBtn         = document.getElementById('toggleKey')         as HTMLButtonElement;
 const screenshotShortEl = document.getElementById('screenshotShortcut') as HTMLInputElement;
@@ -56,15 +70,49 @@ const testBtn           = document.getElementById('testBtn')           as HTMLBu
 const statusEl          = document.getElementById('status')            as HTMLParagraphElement;
 const keyHint           = document.getElementById('keyHint')           as HTMLParagraphElement;
 
+function curatedValues(provider: string): Set<string> {
+  return new Set((MODELS[provider] ?? []).map(m => m.value).filter(v => v !== CUSTOM_MODEL_VALUE));
+}
+
+function syncCustomModelVisibility() {
+  const show = providerEl.value === 'openrouter' && modelEl.value === CUSTOM_MODEL_VALUE;
+  customModelField.style.display = show ? '' : 'none';
+}
+
+function resolveModelForRequest(): string {
+  if (providerEl.value === 'openrouter' && modelEl.value === CUSTOM_MODEL_VALUE) {
+    return customModelEl.value.trim();
+  }
+  return modelEl.value;
+}
+
 function populateModels(provider: string, selectedModel?: string) {
   modelEl.innerHTML = '';
-  for (const m of MODELS[provider] ?? []) {
+  const list = MODELS[provider] ?? [];
+  const known = curatedValues(provider);
+  const useCustom = provider === 'openrouter'
+    && !!selectedModel
+    && !known.has(selectedModel);
+
+  for (const m of list) {
     const opt = document.createElement('option');
     opt.value = m.value;
     opt.textContent = m.label;
-    if (m.value === selectedModel) opt.selected = true;
+    if (useCustom) {
+      if (m.value === CUSTOM_MODEL_VALUE) opt.selected = true;
+    } else if (m.value === selectedModel) {
+      opt.selected = true;
+    }
     modelEl.appendChild(opt);
   }
+
+  if (useCustom && selectedModel) {
+    customModelEl.value = selectedModel;
+  } else if (provider !== 'openrouter') {
+    customModelEl.value = '';
+  }
+
+  syncCustomModelVisibility();
 }
 
 function updateHint(provider: string) {
@@ -75,6 +123,11 @@ providerEl.addEventListener('change', () => {
   populateModels(providerEl.value);
   updateHint(providerEl.value);
   statusEl.textContent = '';
+});
+
+modelEl.addEventListener('change', () => {
+  syncCustomModelVisibility();
+  if (modelEl.value === CUSTOM_MODEL_VALUE) customModelEl.focus();
 });
 
 // ── Screenshot shortcut recorder ───────────────────────────────────────────
@@ -99,12 +152,18 @@ toggleBtn.addEventListener('click', () => {
 saveBtn.addEventListener('click', () => {
   const serverUrl         = serverUrlEl.value.trim().replace(/\/$/, '') || 'https://stealth-assist.onrender.com';
   const provider          = providerEl.value;
-  const model             = modelEl.value;
+  const model             = resolveModelForRequest();
   const apiKey            = apiKeyEl.value.trim();
   const screenshotShortcut = screenshotShortEl.value.trim() || 'Alt+Shift+Z';
 
   if (!apiKey) {
     setStatus('err', 'Please enter an API key.');
+    return;
+  }
+  if (!model) {
+    setStatus('err', provider === 'openrouter'
+      ? 'Enter a custom OpenRouter model ID, or pick one from the list.'
+      : 'Please select a model.');
     return;
   }
 
@@ -116,11 +175,15 @@ saveBtn.addEventListener('click', () => {
 testBtn.addEventListener('click', () => {
   const serverUrl = serverUrlEl.value.trim().replace(/\/$/, '') || 'https://stealth-assist.onrender.com';
   const provider  = providerEl.value;
-  const model     = modelEl.value;
+  const model     = resolveModelForRequest();
   const apiKey    = apiKeyEl.value.trim();
 
   if (!apiKey) {
     setStatus('err', 'Enter an API key first.');
+    return;
+  }
+  if (!model) {
+    setStatus('err', 'Enter or select a model first.');
     return;
   }
 

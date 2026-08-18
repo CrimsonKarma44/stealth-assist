@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>StealthAssist — AI overlay they can't detect</title>
-  <meta name="description" content="Stealth Assist puts AI one shortcut away on any website. Research, learn, write, debug, and think faster without breaking your concentration." />
+  <meta name="description" content="Stealth Assist puts AI one shortcut away on any website. Bring your own key — OpenRouter (free & paid), Gemini, Grok, Claude, or OpenAI." />
   <link rel="stylesheet" href="style.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -28,7 +28,7 @@
   <section class="hero">
     <div class="badge">
       <span class="badge-dot"></span>
-      Open Source · Chrome &amp; Firefox · TypeScript &amp; Go
+      Open Source · Chrome &amp; Firefox · OpenRouter, Gemini, Grok &amp; more
     </div>
 
     <h1>Stay in <em>flow.</em><br>Get answers instantly.</h1>
@@ -107,7 +107,7 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
-        Bring your own Anthropic API key
+        Bring your own API key (OpenRouter free tier available)
       </div>
     </div>
   </section>
@@ -137,7 +137,7 @@
           </svg>
         </div>
         <h3>AI chat overlay</h3>
-        <p>Ask anything via a floating panel. Full conversation history, markdown with code blocks, multi-turn dialogue — routed through the Anthropic API with your own key.</p>
+        <p>Ask anything via a floating panel. Full conversation history, markdown with code blocks, multi-turn dialogue — pick OpenRouter, Gemini, Grok, Claude, or OpenAI and use your own key.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">
@@ -158,7 +158,7 @@
           </svg>
         </div>
         <h3>Your key, your data</h3>
-        <p>Conversations go from the extension to the backend, then directly to Anthropic with your API key. No relay, no logging, no third-party accounts.</p>
+        <p>API keys stay in your browser's extension storage. Each request is sent with your key to the provider you chose — OpenRouter free models included, or paid credits when you want stronger models.</p>
       </div>
       <div class="feature-card">
         <div class="feature-icon">
@@ -189,35 +189,35 @@
   <div class="section" id="how-it-works">
     <div class="section-label">How it works</div>
     <h2 class="section-title">Simple by design</h2>
-    <p class="section-sub">A TypeScript extension talking to a Go backend hosted on Render. Self-hosting is possible but requires tweaking the server URL in the source.</p>
+    <p class="section-sub">A TypeScript extension talking to a Go backend hosted on Render. Configure any supported provider in Settings — keys never leave your machine except to call the model API you chose.</p>
 
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-content">
           <h3>The backend is already running</h3>
-          <p>The Go server is hosted on Render and set as the default in the extension — no server setup needed to get started. To self-host, clone the repo, point the extension at your own URL, and supply your <code>ANTHROPIC_API_KEY</code>.</p>
+          <p>The Go server is hosted on Render and set as the default in the extension — no server setup needed to get started. To self-host, clone the repo and point the extension's Server URL at your instance.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-content">
-          <h3>Download and load the extension</h3>
-          <p>Download the zip for your browser from the <a href="#download" style="color:var(--accent);text-decoration:none;">Download section</a> and unzip it. In Chrome, go to <code>chrome://extensions</code>, enable <strong>Developer Mode</strong>, and click <strong>Load unpacked</strong> — select the unzipped folder. In Firefox, go to <code>about:debugging</code> → <strong>This Firefox</strong> → <strong>Load Temporary Add-on…</strong> → select <code>manifest.json</code> from the unzipped folder.</p>
+          <h3>Download, load, and pick a provider</h3>
+          <p>Download the zip from the <a href="#download" style="color:var(--accent);text-decoration:none;">Download section</a> and load it unpacked. On first install the settings page opens — choose <strong>OpenRouter</strong> (free models available), Gemini, Grok, Claude, or OpenAI, paste your key, and Save. Get a free OpenRouter key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none;">openrouter.ai/keys</a>.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-content">
           <h3>Open any tab and press Ctrl+Shift+X</h3>
-          <p>The overlay appears. The inject script has already patched the page's focus and visibility APIs at <code>document_start</code> — the page sees you as fully focused the entire time.</p>
+          <p>The overlay appears and shows the model you configured. The inject script has already patched the page's focus and visibility APIs at <code>document_start</code> — the page sees you as fully focused the entire time.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-content">
           <h3>Ask or screenshot</h3>
-          <p>Type a question and hit <kbd>Enter</kbd>, or press <kbd>Alt+Shift+Z</kbd> for vision mode. Responses come back from the AI. History is preserved until you click Clear or close the browser.</p>
+          <p>Type a question and hit <kbd>Enter</kbd>, or press <kbd>Alt+Shift+Z</kbd> for vision mode. Responses come back from your selected model. History is preserved until you click Clear.</p>
         </div>
       </div>
     </div>
@@ -256,7 +256,7 @@
   <div class="section" id="download">
     <div class="section-label">Get started</div>
     <h2 class="section-title">Free &amp; open source</h2>
-    <p class="section-sub">The backend runs on Render out of the box. To self-host, you'll need Node.js, Go, and your own Anthropic API key — plus a small source change to point the extension at your server.</p>
+    <p class="section-sub">The backend runs on Render out of the box. Bring your own key — OpenRouter's free tier works with no credit card; paid providers are optional. Self-hosting only needs Node.js, Go, and your Server URL in Settings.</p>
 
     <div class="download-grid">
       <!-- Chrome -->
@@ -312,9 +312,10 @@
     </div>
 
     <div class="prereq-note">
-      <strong>Self-hosting:</strong> Requires Node.js ≥ 18 · Go ≥ 1.21 · An
-      <a href="https://console.anthropic.com/" target="_blank" rel="noopener">Anthropic API key</a>.
-      Add the key to <code>server/.env</code>, then update the server URL in the extension source before building.
+      <strong>API keys:</strong> Configure in the extension Settings page — never committed to the repo.
+      Free path: <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">OpenRouter</a> or
+      <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">Google Gemini</a>.
+      <strong>Self-hosting:</strong> Node.js ≥ 18 · Go ≥ 1.21 · set Server URL in Settings to your instance.
     </div>
   </div>
 

@@ -18,7 +18,7 @@ type Message struct {
 // Config carries per-request provider settings from the browser extension.
 // If Provider and APIKey are both empty the server falls back to ANTHROPIC_API_KEY env.
 type Config struct {
-	Provider string // "anthropic" | "openai" | "google" | "xai"
+	Provider string // "anthropic" | "openai" | "google" | "xai" | "openrouter"
 	Model    string
 	APIKey   string
 }
@@ -42,6 +42,8 @@ func (c *Config) resolve() {
 			c.APIKey = os.Getenv("ANTHROPIC_API_KEY")
 		case "xai":
 			c.APIKey = os.Getenv("XAI_API_KEY")
+		case "openrouter":
+			c.APIKey = os.Getenv("OPENROUTER_API_KEY")
 		}
 	}
 	if c.Model == "" {
@@ -52,6 +54,8 @@ func (c *Config) resolve() {
 			c.Model = "gemini-3.6-flash"
 		case "xai":
 			c.Model = "grok-4.5"
+		case "openrouter":
+			c.Model = "openrouter/free"
 		default:
 			c.Model = "claude-opus-4-8"
 		}
@@ -79,6 +83,8 @@ func AskLLM(messages []Message, cfg Config) (string, error) {
 		return askOpenAI(messages, cfg)
 	case "xai":
 		return askGrok(messages, cfg)
+	case "openrouter":
+		return askOpenRouter(messages, cfg)
 	case "google":
 		return askGemini(messages, cfg)
 	default:
@@ -98,6 +104,8 @@ func AskVision(imageBase64 string, cfg Config) (string, error) {
 		return askOpenAIVision(imageBase64, cfg)
 	case "xai":
 		return askGrokVision(imageBase64, cfg)
+	case "openrouter":
+		return askOpenRouterVision(imageBase64, cfg)
 	case "google":
 		return askGeminiVision(imageBase64, cfg)
 	default:
@@ -269,28 +277,45 @@ type openAIResponse struct {
 }
 
 const (
-	openAIChatURL = "https://api.openai.com/v1/chat/completions"
-	xaiChatURL    = "https://api.x.ai/v1/chat/completions"
+	openAIChatURL     = "https://api.openai.com/v1/chat/completions"
+	xaiChatURL        = "https://api.x.ai/v1/chat/completions"
+	openRouterChatURL = "https://openrouter.ai/api/v1/chat/completions"
 )
 
 func askOpenAI(messages []Message, cfg Config) (string, error) {
-	return askOpenAICompatible(messages, cfg, openAIChatURL, "openai")
+	return askOpenAICompatible(messages, cfg, openAIChatURL, "openai", nil)
 }
 
 func askOpenAIVision(imageBase64 string, cfg Config) (string, error) {
-	return askOpenAICompatibleVision(imageBase64, cfg, openAIChatURL, "openai")
+	return askOpenAICompatibleVision(imageBase64, cfg, openAIChatURL, "openai", nil)
 }
 
 // xAI Grok uses an OpenAI-compatible chat completions API.
 func askGrok(messages []Message, cfg Config) (string, error) {
-	return askOpenAICompatible(messages, cfg, xaiChatURL, "xai")
+	return askOpenAICompatible(messages, cfg, xaiChatURL, "xai", nil)
 }
 
 func askGrokVision(imageBase64 string, cfg Config) (string, error) {
-	return askOpenAICompatibleVision(imageBase64, cfg, xaiChatURL, "xai")
+	return askOpenAICompatibleVision(imageBase64, cfg, xaiChatURL, "xai", nil)
 }
 
-func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string) (string, error) {
+// OpenRouter is OpenAI-compatible and routes to many free/paid upstream models.
+func askOpenRouter(messages []Message, cfg Config) (string, error) {
+	return askOpenAICompatible(messages, cfg, openRouterChatURL, "openrouter", openRouterHeaders())
+}
+
+func askOpenRouterVision(imageBase64 string, cfg Config) (string, error) {
+	return askOpenAICompatibleVision(imageBase64, cfg, openRouterChatURL, "openrouter", openRouterHeaders())
+}
+
+func openRouterHeaders() map[string]string {
+	return map[string]string{
+		"HTTP-Referer": "https://stealth-assist-1.onrender.com",
+		"X-Title":      "Stealth Assist",
+	}
+}
+
+func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string, extraHeaders map[string]string) (string, error) {
 	msgs := []openAIMessage{{Role: "system", Content: systemPrompt}}
 	for _, m := range messages {
 		msgs = append(msgs, openAIMessage{Role: m.Role, Content: m.Content})
@@ -307,11 +332,14 @@ func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string)
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("content-type", "application/json")
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
+	}
 
 	return parseOpenAICompatible(req, label)
 }
 
-func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label string) (string, error) {
+func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label string, extraHeaders map[string]string) (string, error) {
 	msgs := []openAIMessage{
 		{Role: "system", Content: visionPrompt},
 		{Role: "user", Content: []openAIContentPart{
@@ -331,6 +359,9 @@ func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label s
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("content-type", "application/json")
+	for k, v := range extraHeaders {
+		req.Header.Set(k, v)
+	}
 
 	return parseOpenAICompatible(req, label)
 }

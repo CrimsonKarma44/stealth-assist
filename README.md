@@ -1,6 +1,6 @@
 # Stealth Assist
 
-A Chrome/Firefox (MV3) browser extension + Go backend that bypasses tab-visibility and focus-detection, and puts an AI chat overlay one shortcut away on any page. Built with TypeScript and Go. Supports Anthropic Claude, OpenAI, Google Gemini, and xAI Grok — bring your own API key.
+A Chrome/Firefox (MV3) browser extension + Go backend that bypasses tab-visibility and focus-detection, and puts an AI chat overlay one shortcut away on any page. Built with TypeScript and Go. Supports OpenRouter (free & paid), Google Gemini, xAI Grok, Anthropic Claude, and OpenAI — bring your own API key.
 
 **[stealth-assist-1.onrender.com](https://stealth-assist-1.onrender.com)** — landing page & downloads
 
@@ -150,10 +150,11 @@ On first install the settings page opens automatically. You can also reach it vi
 
 | Provider             | Free tier                 | Where to get a key                                            |
 | -------------------- | ------------------------- | ------------------------------------------------------------- |
-| **Google Gemini**    | ✓ No credit card required | [aistudio.google.com](https://aistudio.google.com/app/apikey) |
-| **xAI Grok**         | Paid                      | [console.x.ai](https://console.x.ai/)                         |
-| **Anthropic Claude** | Paid                      | [console.anthropic.com](https://console.anthropic.com/)       |
-| **OpenAI**           | Paid                      | [platform.openai.com](https://platform.openai.com/api-keys)   |
+| **OpenRouter**         | ✓ Free models + paid credits | [openrouter.ai/keys](https://openrouter.ai/keys)                 |
+| **Google Gemini**    | ✓ No credit card required    | [aistudio.google.com](https://aistudio.google.com/app/apikey)    |
+| **xAI Grok**         | Paid                         | [console.x.ai](https://console.x.ai/)                            |
+| **Anthropic Claude** | Paid                         | [console.anthropic.com](https://console.anthropic.com/)          |
+| **OpenAI**           | Paid                         | [platform.openai.com](https://platform.openai.com/api-keys)      |
 
 Select your provider, pick a model, paste your API key, click **Save**. Use **Test connection** to verify before closing the page.
 
@@ -191,7 +192,7 @@ by-pass_plugin/
 │   ├── main.go                # HTTP server, CORS, /api/ask + /api/screenshot
 │   ├── render.yaml            # Render deployment blueprint
 │   └── llm/
-│       └── client.go          # Multi-provider LLM client (Anthropic, OpenAI, Gemini, xAI Grok)
+│       └── client.go          # Multi-provider LLM client (OpenRouter, Anthropic, OpenAI, Gemini, xAI Grok)
 └── site/
     ├── index.html             # Landing page
     └── style.css
