@@ -462,12 +462,19 @@ chrome.storage.onChanged.addListener((changes, area) => {
 document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (quietModeActive) return;
   // Overlay toggle — Ctrl+Shift+X (fixed)
+  // no overlay → open; expanded → minimize; minimized → restore
   if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
     e.preventDefault();
+
+    if (overlay && !minimized) {
+      setMinimized(true);
+      return;
+    }
+
     const selected = window.getSelection()?.toString().trim() ?? '';
     if (!overlay) {
       buildOverlay();
-    } else if (minimized) {
+    } else {
       setMinimized(false);
     }
     if (selected && inputEl) {

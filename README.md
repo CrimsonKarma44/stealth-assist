@@ -50,7 +50,7 @@ Press **Ctrl+Shift+X** on any page to open the assistant:
 - **Without selection** — opens with an empty input, type freely
 - **Enter** sends · **Shift+Enter** adds a newline
 - Drag the header to reposition the overlay anywhere on screen
-- **−** minimizes to a title bar; **Ctrl+Shift+X** un-minimizes
+- **−** minimizes to a title bar; **Ctrl+Shift+X** toggles the overlay (open ↔ minimize)
 - **⚙** opens the settings page to switch provider or update your key
 - **Copy** — copies the last reply to clipboard
 - **Clear** — wipes the chat and resets conversation memory
