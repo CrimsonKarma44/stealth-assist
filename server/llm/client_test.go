@@ -592,3 +592,63 @@ func TestAskNvidiaReasoningWithoutAnswer(t *testing.T) {
 		t.Fatal("expected error when the model returns reasoning and no answer")
 	}
 }
+
+func TestAskNvidiaProblemDetails(t *testing.T) {
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": 403,
+			"title":  "Forbidden",
+			"detail": "Authorization failed",
+			"type":   "urn:nvcf:problem-details:forbidden",
+		})
+	})
+	defer cleanup()
+
+	_, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{
+		Provider: "nvidia",
+		Model:    "moonshotai/kimi-k3",
+		APIKey:   "nv-test",
+	})
+	if err == nil {
+		t.Fatal("expected the NVIDIA problem body to surface")
+	}
+	if !strings.Contains(err.Error(), "Authorization failed") {
+		t.Errorf("error: got %q", err.Error())
+	}
+}
+
+func TestAskNvidiaPollsAccepted(t *testing.T) {
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			if !strings.Contains(r.URL.Path, "/v1/status/req-1") {
+				t.Errorf("poll path: got %q", r.URL.Path)
+			}
+			if r.Header.Get("Authorization") != "Bearer nv-test" {
+				t.Errorf("poll auth: got %q", r.Header.Get("Authorization"))
+			}
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"choices": []map[string]interface{}{
+					{"message": map[string]string{"content": "after poll"}},
+				},
+			})
+			return
+		}
+		w.Header().Set("NVCF-REQID", "req-1")
+		w.WriteHeader(http.StatusAccepted)
+		w.Write([]byte(`{}`))
+	})
+	defer cleanup()
+
+	reply, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{
+		Provider: "nvidia",
+		Model:    "meta/llama-3.2-11b-vision-instruct",
+		APIKey:   "nv-test",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reply != "after poll" {
+		t.Errorf("reply: got %q, want %q", reply, "after poll")
+	}
+}

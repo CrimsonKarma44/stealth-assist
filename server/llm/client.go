@@ -7,6 +7,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 )
 
 // Message is exported so main.go can decode directly into it.
@@ -393,6 +395,7 @@ func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string,
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("content-type", "application/json")
+	req.Header.Set("accept", "application/json")
 	for k, v := range extraHeaders {
 		req.Header.Set(k, v)
 	}
@@ -420,6 +423,7 @@ func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label s
 	}
 	req.Header.Set("Authorization", "Bearer "+cfg.APIKey)
 	req.Header.Set("content-type", "application/json")
+	req.Header.Set("accept", "application/json")
 	for k, v := range extraHeaders {
 		req.Header.Set(k, v)
 	}
@@ -442,25 +446,116 @@ func openAIRequestFrom(cfg Config, fallbackTokens int, msgs []openAIMessage, opt
 }
 
 func parseOpenAICompatible(req *http.Request, label string) (string, error) {
-	raw, err := doHTTP(req)
+	res, err := doHTTPResult(req)
 	if err != nil {
 		return "", err
 	}
+	// A cold NVIDIA endpoint answers 202 with an empty body and NVCF-REQID.
+	// The completion shows up on the status URL.
+	if label == "nvidia" && res.Status == http.StatusAccepted {
+		res, err = pollNvidia(req, res)
+		if err != nil {
+			return "", err
+		}
+	}
+	return parseOpenAIBody(res, label)
+}
+
+func parseOpenAIBody(res httpResult, label string) (string, error) {
 	var or openAIResponse
-	if err := json.Unmarshal(raw, &or); err != nil {
-		return "", fmt.Errorf("decode response: %w", err)
+	if err := json.Unmarshal(res.Body, &or); err != nil {
+		return "", fmt.Errorf("decode %s response (HTTP %d): %w; body: %s", label, res.Status, err, clip(res.Body))
 	}
 	if or.Error != nil {
 		return "", fmt.Errorf("%s error %s: %s", label, or.Error.Type, or.Error.Message)
 	}
 	if len(or.Choices) == 0 {
-		return "", fmt.Errorf("no choices in %s response", label)
+		return "", providerProblem(res, label)
 	}
 	msg := or.Choices[0].Message
 	if msg.Content == "" && msg.ReasoningContent != "" {
 		return "", fmt.Errorf("%s returned reasoning but no answer (token budget used by reasoning)", label)
 	}
 	return msg.Content, nil
+}
+
+// providerProblem reads NVIDIA's problem-details body ({title, status, detail})
+// and other non-completion JSON. That body has no choices array.
+func providerProblem(res httpResult, label string) error {
+	var problem struct {
+		Title  string          `json:"title"`
+		Status int             `json:"status"`
+		Detail json.RawMessage `json:"detail"`
+		Error  json.RawMessage `json:"error"`
+	}
+	if err := json.Unmarshal(res.Body, &problem); err != nil {
+		return fmt.Errorf("%s returned HTTP %d: %s", label, res.Status, clip(res.Body))
+	}
+	detail := rawJSONText(problem.Detail)
+	errText := rawJSONText(problem.Error)
+	code := problem.Status
+	if code == 0 {
+		code = res.Status
+	}
+	switch {
+	case detail != "" && problem.Title != "":
+		return fmt.Errorf("%s: %s (%d %s)", label, detail, code, problem.Title)
+	case detail != "":
+		return fmt.Errorf("%s: %s (HTTP %d)", label, detail, code)
+	case problem.Title != "":
+		return fmt.Errorf("%s: %s (HTTP %d)", label, problem.Title, code)
+	case errText != "":
+		return fmt.Errorf("%s: %s (HTTP %d)", label, errText, code)
+	default:
+		return fmt.Errorf("%s returned HTTP %d with no choices: %s", label, res.Status, clip(res.Body))
+	}
+}
+
+func pollNvidia(orig *http.Request, first httpResult) (httpResult, error) {
+	reqID := first.Header.Get("NVCF-REQID")
+	if reqID == "" {
+		return httpResult{}, fmt.Errorf("nvidia returned 202 without NVCF-REQID")
+	}
+	deadline := time.Now().Add(45 * time.Second)
+	res := first
+	for res.Status == http.StatusAccepted {
+		if time.Now().After(deadline) {
+			return httpResult{}, fmt.Errorf("nvidia request %s still pending", reqID)
+		}
+		poll, err := http.NewRequest("GET", "https://integrate.api.nvidia.com/v1/status/"+reqID, nil)
+		if err != nil {
+			return httpResult{}, err
+		}
+		poll.Header.Set("Authorization", orig.Header.Get("Authorization"))
+		poll.Header.Set("Accept", "application/json")
+		res, err = doHTTPResult(poll)
+		if err != nil {
+			return httpResult{}, err
+		}
+		if res.Status == http.StatusAccepted {
+			time.Sleep(time.Second)
+		}
+	}
+	return res, nil
+}
+
+func rawJSONText(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	var s string
+	if err := json.Unmarshal(raw, &s); err == nil {
+		return strings.TrimSpace(s)
+	}
+	return strings.TrimSpace(string(raw))
+}
+
+func clip(b []byte) string {
+	s := strings.TrimSpace(string(b))
+	if len(s) > 300 {
+		return s[:300]
+	}
+	return s
 }
 
 // ── Google Gemini ─────────────────────────────────────────────────────────────
@@ -586,15 +681,29 @@ func parseGemini(req *http.Request) (string, error) {
 // Tests can override this to intercept requests.
 var HTTPClient = http.DefaultClient
 
+type httpResult struct {
+	Status int
+	Header http.Header
+	Body   []byte
+}
+
 func doHTTP(req *http.Request) ([]byte, error) {
+	res, err := doHTTPResult(req)
+	if err != nil {
+		return nil, err
+	}
+	return res.Body, nil
+}
+
+func doHTTPResult(req *http.Request) (httpResult, error) {
 	resp, err := HTTPClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("http request: %w", err)
+		return httpResult{}, fmt.Errorf("http request: %w", err)
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
+		return httpResult{}, fmt.Errorf("read response: %w", err)
 	}
-	return raw, nil
+	return httpResult{Status: resp.StatusCode, Header: resp.Header, Body: raw}, nil
 }

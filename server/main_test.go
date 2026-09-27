@@ -168,6 +168,42 @@ func TestScreenshotEmptyImage(t *testing.T) {
 	}
 }
 
+func TestAskProviderErrorIsJSON(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": 404,
+			"title":  "Not Found",
+			"detail": "Function not found for account",
+		})
+	}))
+	defer srv.Close()
+	orig := llm.HTTPClient
+	llm.HTTPClient = &http.Client{Transport: &testTransport{target: srv.URL}}
+	defer func() { llm.HTTPClient = orig }()
+
+	body, _ := json.Marshal(AskRequest{
+		Messages: []llm.Message{{Role: "user", Content: "hi"}},
+		Provider: "nvidia",
+		Model:    "moonshotai/kimi-k3",
+		APIKey:   "nv-test",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/api/ask", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	handleAsk(rec, req)
+
+	if rec.Code != http.StatusBadGateway {
+		t.Fatalf("status: got %d, want %d", rec.Code, http.StatusBadGateway)
+	}
+	var resp map[string]string
+	if err := json.NewDecoder(rec.Body).Decode(&resp); err != nil {
+		t.Fatalf("decode response: %v; body %q", err, rec.Body.String())
+	}
+	if !bytes.Contains([]byte(resp["error"]), []byte("Function not found for account")) {
+		t.Errorf("error: got %q", resp["error"])
+	}
+}
+
 func TestScreenshotSuccess(t *testing.T) {
 	cleanup := withClaudeMock(t, "I see questions")
 	defer cleanup()

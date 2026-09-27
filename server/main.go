@@ -58,7 +58,7 @@ func handleAsk(w http.ResponseWriter, r *http.Request) {
 	reply, err := llm.AskLLM(req.Messages, cfg)
 	if err != nil {
 		log.Printf("LLM error: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		writeAPIError(w, http.StatusBadGateway, err.Error())
 		return
 	}
 
@@ -82,12 +82,18 @@ func handleScreenshot(w http.ResponseWriter, r *http.Request) {
 	reply, err := llm.AskVision(req.Image, cfg)
 	if err != nil {
 		log.Printf("Vision error: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		writeAPIError(w, http.StatusBadGateway, err.Error())
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(AskResponse{Reply: reply})
+}
+
+func writeAPIError(w http.ResponseWriter, status int, msg string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
 func main() {

@@ -36,6 +36,24 @@ chrome.runtime.onInstalled.addListener((details) => {
   }
 });
 
+// The server returns {"error":"..."} on provider failures. Older builds
+// answered with the plain text "Internal server error", which is not JSON.
+async function readAPI(res: Response): Promise<{ reply?: string }> {
+  const text = await res.text();
+  let data: { reply?: string; error?: string } = {};
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(text.trim().slice(0, 300));
+    }
+  }
+  if (!res.ok || data.error) {
+    throw new Error(data.error || `Server returned ${res.status}`);
+  }
+  return data;
+}
+
 // ── Settings helpers ───────────────────────────────────────────────────────
 type Settings = { provider: string; model: string; apiKey: string; serverUrl: string; configured: boolean };
 type Turn = { role: string; content: string };
@@ -114,7 +132,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
           apiKey:   settings.apiKey,
         }),
       })
-        .then(res => res.json())
+        .then(res => readAPI(res))
         .then(data => {
           if (data.reply) history.push({ role: 'assistant', content: data.reply });
           saveHistory(history);
@@ -157,7 +175,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
             }),
           });
         })
-        .then(res => res.json())
+        .then(res => readAPI(res))
         .then(data => {
           if (data.reply) {
             loadHistory().then(history => {
@@ -186,10 +204,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
         apiKey:   request.apiKey,
       }),
     })
-      .then(res => {
-        if (!res.ok) throw new Error(`Server returned ${res.status}`);
-        return res.json();
-      })
+      .then(res => readAPI(res))
       .then(data => sendResponse({ ok: true, reply: data.reply }))
       .catch(err => sendResponse({ ok: false, error: err.toString() }));
 
