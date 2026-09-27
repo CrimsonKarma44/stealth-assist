@@ -19,6 +19,7 @@ let modelTitle = '';
 function providerDisplayName(provider: string): string {
   switch (provider) {
     case 'openrouter': return 'OpenRouter';
+    case 'nvidia':     return 'NVIDIA';
     case 'google':     return 'Gemini';
     case 'xai':        return 'Grok';
     case 'openai':     return 'GPT';
@@ -110,11 +111,26 @@ function appendMessage(role: 'user' | 'assistant', text: string) {
   chatEl!.scrollTop = chatEl!.scrollHeight;
 }
 
+// One-line box: 7px padding × 2 + ~22px line box at 13px/1.5
+const INPUT_MIN_HEIGHT = 36;
+const INPUT_MAX_HEIGHT = 100;
+
+function fitInputHeight() {
+  if (!inputEl || minimized) return;
+  inputEl.style.height = 'auto';
+  const next = Math.max(INPUT_MIN_HEIGHT, Math.min(inputEl.scrollHeight, INPUT_MAX_HEIGHT));
+  inputEl.style.height = `${next}px`;
+}
+
 function setMinimized(val: boolean) {
   minimized = val;
   bodyEl!.style.display = val ? 'none' : 'flex';
   minBtn!.textContent = val ? '+' : '−';
   overlay!.style.maxHeight = val ? '' : '72vh';
+  if (!val) {
+    // Body was display:none — wait for layout before measuring scrollHeight
+    requestAnimationFrame(() => requestAnimationFrame(fitInputHeight));
+  }
 }
 
 function buildOverlay() {
@@ -261,14 +277,12 @@ function buildOverlay() {
   inputEl.style.cssText = `
     background:#1a1a24;border:1px solid #2d2d3a;border-radius:7px;
     color:#e2e8f0;font-family:inherit;font-size:13px;
-    resize:none;flex:1;line-height:1.5;max-height:100px;
-    padding:7px 10px;outline:none;overflow-y:auto;
+    resize:none;flex:1 1 auto;min-width:0;line-height:1.5;
+    min-height:${INPUT_MIN_HEIGHT}px;height:${INPUT_MIN_HEIGHT}px;max-height:${INPUT_MAX_HEIGHT}px;
+    padding:7px 10px;outline:none;overflow-y:auto;box-sizing:border-box;
   `;
 
-  inputEl.addEventListener('input', () => {
-    inputEl!.style.height = 'auto';
-    inputEl!.style.height = Math.min(inputEl!.scrollHeight, 100) + 'px';
-  });
+  inputEl.addEventListener('input', () => fitInputHeight());
 
   sendBtn = document.createElement('button');
   sendBtn.textContent = 'Send';
@@ -329,7 +343,7 @@ function buildOverlay() {
 
     appendMessage('user', prompt);
     inputEl!.value = '';
-    inputEl!.style.height = 'auto';
+    fitInputHeight();
     sendBtn!.disabled = true;
     sendBtn!.style.opacity = '.45';
 
@@ -479,11 +493,13 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     }
     if (selected && inputEl) {
       inputEl.value = selected;
-      inputEl.style.height = 'auto';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 100) + 'px';
     }
-    inputEl?.focus();
-    if (inputEl) inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+    // Fit after restore/open layout settles (avoids collapsed scrollHeight)
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      fitInputHeight();
+      inputEl?.focus();
+      if (inputEl) inputEl.setSelectionRange(inputEl.value.length, inputEl.value.length);
+    }));
     return;
   }
 

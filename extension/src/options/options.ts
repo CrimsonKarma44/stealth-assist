@@ -10,6 +10,13 @@ const MODELS: Record<string, { label: string; value: string }[]> = {
     { label: 'xAI Grok 4.6 (paid, vision)',              value: 'x-ai/grok-4.6' },
     { label: 'Custom…',                                 value: CUSTOM_MODEL_VALUE },
   ],
+  nvidia: [
+    { label: 'Kimi K3 (vision)',              value: 'moonshotai/kimi-k3' },
+    { label: 'DeepSeek V4.1 Flash (vision)',  value: 'deepseek-ai/deepseek-v4.1-flash' },
+    { label: 'Muse Glimmer 30B (vision)',     value: 'meta/muse-glimmer-30b' },
+    { label: 'Llama 3.2 90B Vision',          value: 'meta/llama-3.2-90b-vision-instruct' },
+    { label: 'Llama 3.2 11B Vision',          value: 'meta/llama-3.2-11b-vision-instruct' },
+  ],
   google: [
     { label: 'Gemini 3.6 Flash (recommended)', value: 'gemini-3.6-flash' },
     { label: 'Gemini 3.5 Flash',               value: 'gemini-3.5-flash' },
@@ -51,6 +58,7 @@ function migrateGeminiModel(model: string): string {
 
 const HINTS: Record<string, string> = {
   openrouter: 'Get a free key at <a href="https://openrouter.ai/keys" target="_blank">openrouter.ai/keys</a> — free models available; paid credits unlock stronger models.',
+  nvidia:     'Get a free key at <a href="https://build.nvidia.com" target="_blank">build.nvidia.com</a>. Every model in this list accepts images. The free endpoint is rate-limited, and NVIDIA may log prompts to improve their models.',
   google:     'Get a free key at <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> — no credit card required.',
   xai:        'Get a key at <a href="https://console.x.ai/" target="_blank">console.x.ai</a>.',
   anthropic:  'Get a key at <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a>.',

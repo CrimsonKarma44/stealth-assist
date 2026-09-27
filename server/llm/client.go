@@ -18,7 +18,7 @@ type Message struct {
 // Config carries per-request provider settings from the browser extension.
 // If Provider and APIKey are both empty the server falls back to ANTHROPIC_API_KEY env.
 type Config struct {
-	Provider string // "anthropic" | "openai" | "google" | "xai" | "openrouter"
+	Provider string // "anthropic" | "openai" | "google" | "xai" | "openrouter" | "nvidia"
 	Model    string
 	APIKey   string
 }
@@ -44,6 +44,8 @@ func (c *Config) resolve() {
 			c.APIKey = os.Getenv("XAI_API_KEY")
 		case "openrouter":
 			c.APIKey = os.Getenv("OPENROUTER_API_KEY")
+		case "nvidia":
+			c.APIKey = os.Getenv("NVIDIA_API_KEY")
 		}
 	}
 	if c.Model == "" {
@@ -56,6 +58,8 @@ func (c *Config) resolve() {
 			c.Model = "grok-4.5"
 		case "openrouter":
 			c.Model = "openrouter/free"
+		case "nvidia":
+			c.Model = "moonshotai/kimi-k3"
 		default:
 			c.Model = "claude-opus-4-8"
 		}
@@ -85,6 +89,8 @@ func AskLLM(messages []Message, cfg Config) (string, error) {
 		return askGrok(messages, cfg)
 	case "openrouter":
 		return askOpenRouter(messages, cfg)
+	case "nvidia":
+		return askNvidia(messages, cfg)
 	case "google":
 		return askGemini(messages, cfg)
 	default:
@@ -106,6 +112,8 @@ func AskVision(imageBase64 string, cfg Config) (string, error) {
 		return askGrokVision(imageBase64, cfg)
 	case "openrouter":
 		return askOpenRouterVision(imageBase64, cfg)
+	case "nvidia":
+		return askNvidiaVision(imageBase64, cfg)
 	case "google":
 		return askGeminiVision(imageBase64, cfg)
 	default:
@@ -123,9 +131,9 @@ type claudeRequest struct {
 }
 
 type claudeVisionRequest struct {
-	Model     string          `json:"model"`
-	MaxTokens int             `json:"max_tokens"`
-	System    string          `json:"system"`
+	Model     string            `json:"model"`
+	MaxTokens int               `json:"max_tokens"`
+	System    string            `json:"system"`
 	Messages  []claudeVisionMsg `json:"messages"`
 }
 
@@ -244,9 +252,21 @@ func askClaudeVision(imageBase64 string, cfg Config) (string, error) {
 // ── OpenAI ───────────────────────────────────────────────────────────────────
 
 type openAIRequest struct {
-	Model     string          `json:"model"`
-	MaxTokens int             `json:"max_tokens"`
-	Messages  []openAIMessage `json:"messages"`
+	Model           string          `json:"model"`
+	MaxTokens       int             `json:"max_tokens"`
+	Messages        []openAIMessage `json:"messages"`
+	Temperature     *float64        `json:"temperature,omitempty"`
+	TopP            *float64        `json:"top_p,omitempty"`
+	ReasoningEffort any             `json:"reasoning_effort,omitempty"`
+}
+
+// openAICallOpts overrides sampling and token budget for one OpenAI-compatible call.
+// Nil fields are omitted so other providers keep their previous request shape.
+type openAICallOpts struct {
+	maxTokens       int
+	temperature     *float64
+	topP            *float64
+	reasoningEffort any
 }
 
 type openAIMessage struct {
@@ -255,9 +275,9 @@ type openAIMessage struct {
 }
 
 type openAIContentPart struct {
-	Type     string            `json:"type"`
-	Text     string            `json:"text,omitempty"`
-	ImageURL *openAIImageURL   `json:"image_url,omitempty"`
+	Type     string          `json:"type"`
+	Text     string          `json:"text,omitempty"`
+	ImageURL *openAIImageURL `json:"image_url,omitempty"`
 }
 
 type openAIImageURL struct {
@@ -267,7 +287,8 @@ type openAIImageURL struct {
 type openAIResponse struct {
 	Choices []struct {
 		Message struct {
-			Content string `json:"content"`
+			Content          string `json:"content"`
+			ReasoningContent string `json:"reasoning_content"`
 		} `json:"message"`
 	} `json:"choices"`
 	Error *struct {
@@ -280,32 +301,72 @@ const (
 	openAIChatURL     = "https://api.openai.com/v1/chat/completions"
 	xaiChatURL        = "https://api.x.ai/v1/chat/completions"
 	openRouterChatURL = "https://openrouter.ai/api/v1/chat/completions"
+	nvidiaChatURL     = "https://integrate.api.nvidia.com/v1/chat/completions"
 )
 
 func askOpenAI(messages []Message, cfg Config) (string, error) {
-	return askOpenAICompatible(messages, cfg, openAIChatURL, "openai", nil)
+	return askOpenAICompatible(messages, cfg, openAIChatURL, "openai", nil, nil)
 }
 
 func askOpenAIVision(imageBase64 string, cfg Config) (string, error) {
-	return askOpenAICompatibleVision(imageBase64, cfg, openAIChatURL, "openai", nil)
+	return askOpenAICompatibleVision(imageBase64, cfg, openAIChatURL, "openai", nil, nil)
 }
 
 // xAI Grok uses an OpenAI-compatible chat completions API.
 func askGrok(messages []Message, cfg Config) (string, error) {
-	return askOpenAICompatible(messages, cfg, xaiChatURL, "xai", nil)
+	return askOpenAICompatible(messages, cfg, xaiChatURL, "xai", nil, nil)
 }
 
 func askGrokVision(imageBase64 string, cfg Config) (string, error) {
-	return askOpenAICompatibleVision(imageBase64, cfg, xaiChatURL, "xai", nil)
+	return askOpenAICompatibleVision(imageBase64, cfg, xaiChatURL, "xai", nil, nil)
 }
 
 // OpenRouter is OpenAI-compatible and routes to many free/paid upstream models.
 func askOpenRouter(messages []Message, cfg Config) (string, error) {
-	return askOpenAICompatible(messages, cfg, openRouterChatURL, "openrouter", openRouterHeaders())
+	return askOpenAICompatible(messages, cfg, openRouterChatURL, "openrouter", openRouterHeaders(), nil)
 }
 
 func askOpenRouterVision(imageBase64 string, cfg Config) (string, error) {
-	return askOpenAICompatibleVision(imageBase64, cfg, openRouterChatURL, "openrouter", openRouterHeaders())
+	return askOpenAICompatibleVision(imageBase64, cfg, openRouterChatURL, "openrouter", openRouterHeaders(), nil)
+}
+
+// NVIDIA NIM's hosted API is OpenAI-compatible. Every model offered in the
+// extension accepts images, so chat and screenshot share one endpoint.
+func askNvidia(messages []Message, cfg Config) (string, error) {
+	return askOpenAICompatible(messages, cfg, nvidiaChatURL, "nvidia", nil, nvidiaCallOpts(cfg, false))
+}
+
+func askNvidiaVision(imageBase64 string, cfg Config) (string, error) {
+	return askOpenAICompatibleVision(imageBase64, cfg, nvidiaChatURL, "nvidia", nil, nvidiaCallOpts(cfg, true))
+}
+
+func nvidiaCallOpts(cfg Config, vision bool) *openAICallOpts {
+	maxTokens := 4096
+	if vision {
+		maxTokens = 8192
+	}
+	temp := 0.5
+	topP := 1.0
+	return &openAICallOpts{
+		maxTokens:       maxTokens,
+		temperature:     &temp,
+		topP:            &topP,
+		reasoningEffort: nvidiaReasoningEffort(cfg.Model),
+	}
+}
+
+// Reasoning models spend the token budget before the answer. Keep effort low
+// so a screenshot still returns content. Llama 3.2 Vision has no reasoning
+// control. DeepSeek expects a number from 1 to 100; the others take low/medium/high.
+func nvidiaReasoningEffort(model string) any {
+	switch model {
+	case "deepseek-ai/deepseek-v4.1-flash":
+		return 20
+	case "meta/llama-3.2-90b-vision-instruct", "meta/llama-3.2-11b-vision-instruct":
+		return nil
+	default:
+		return "low"
+	}
 }
 
 func openRouterHeaders() map[string]string {
@@ -315,13 +376,13 @@ func openRouterHeaders() map[string]string {
 	}
 }
 
-func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string, extraHeaders map[string]string) (string, error) {
+func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string, extraHeaders map[string]string, opts *openAICallOpts) (string, error) {
 	msgs := []openAIMessage{{Role: "system", Content: systemPrompt}}
 	for _, m := range messages {
 		msgs = append(msgs, openAIMessage{Role: m.Role, Content: m.Content})
 	}
 
-	body, err := json.Marshal(openAIRequest{Model: cfg.Model, MaxTokens: 1024, Messages: msgs})
+	body, err := json.Marshal(openAIRequestFrom(cfg, 1024, msgs, opts))
 	if err != nil {
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
@@ -339,7 +400,7 @@ func askOpenAICompatible(messages []Message, cfg Config, endpoint, label string,
 	return parseOpenAICompatible(req, label)
 }
 
-func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label string, extraHeaders map[string]string) (string, error) {
+func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label string, extraHeaders map[string]string, opts *openAICallOpts) (string, error) {
 	msgs := []openAIMessage{
 		{Role: "system", Content: visionPrompt},
 		{Role: "user", Content: []openAIContentPart{
@@ -348,7 +409,7 @@ func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label s
 		}},
 	}
 
-	body, err := json.Marshal(openAIRequest{Model: cfg.Model, MaxTokens: 2048, Messages: msgs})
+	body, err := json.Marshal(openAIRequestFrom(cfg, 2048, msgs, opts))
 	if err != nil {
 		return "", fmt.Errorf("marshal request: %w", err)
 	}
@@ -364,6 +425,20 @@ func askOpenAICompatibleVision(imageBase64 string, cfg Config, endpoint, label s
 	}
 
 	return parseOpenAICompatible(req, label)
+}
+
+func openAIRequestFrom(cfg Config, fallbackTokens int, msgs []openAIMessage, opts *openAICallOpts) openAIRequest {
+	req := openAIRequest{Model: cfg.Model, MaxTokens: fallbackTokens, Messages: msgs}
+	if opts == nil {
+		return req
+	}
+	if opts.maxTokens > 0 {
+		req.MaxTokens = opts.maxTokens
+	}
+	req.Temperature = opts.temperature
+	req.TopP = opts.topP
+	req.ReasoningEffort = opts.reasoningEffort
+	return req
 }
 
 func parseOpenAICompatible(req *http.Request, label string) (string, error) {
@@ -381,15 +456,19 @@ func parseOpenAICompatible(req *http.Request, label string) (string, error) {
 	if len(or.Choices) == 0 {
 		return "", fmt.Errorf("no choices in %s response", label)
 	}
-	return or.Choices[0].Message.Content, nil
+	msg := or.Choices[0].Message
+	if msg.Content == "" && msg.ReasoningContent != "" {
+		return "", fmt.Errorf("%s returned reasoning but no answer (token budget used by reasoning)", label)
+	}
+	return msg.Content, nil
 }
 
 // ── Google Gemini ─────────────────────────────────────────────────────────────
 
 type geminiRequest struct {
-	SystemInstruction *geminiContent   `json:"system_instruction,omitempty"`
-	Contents          []geminiContent  `json:"contents"`
-	GenerationConfig  geminiGenConfig  `json:"generationConfig"`
+	SystemInstruction *geminiContent  `json:"system_instruction,omitempty"`
+	Contents          []geminiContent `json:"contents"`
+	GenerationConfig  geminiGenConfig `json:"generationConfig"`
 }
 
 type geminiContent struct {
@@ -398,8 +477,8 @@ type geminiContent struct {
 }
 
 type geminiPart struct {
-	Text       string          `json:"text,omitempty"`
-	InlineData *geminiInline   `json:"inline_data,omitempty"`
+	Text       string        `json:"text,omitempty"`
+	InlineData *geminiInline `json:"inline_data,omitempty"`
 }
 
 type geminiInline struct {

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 )
 
@@ -73,6 +74,23 @@ func TestConfigResolveOpenRouterDefault(t *testing.T) {
 	cfg.resolve()
 	if cfg.Model != "openrouter/free" {
 		t.Errorf("model: got %q, want %q", cfg.Model, "openrouter/free")
+	}
+}
+
+func TestConfigResolveNvidiaDefault(t *testing.T) {
+	cfg := Config{Provider: "nvidia", APIKey: "k"}
+	cfg.resolve()
+	if cfg.Model != "moonshotai/kimi-k3" {
+		t.Errorf("model: got %q, want %q", cfg.Model, "moonshotai/kimi-k3")
+	}
+}
+
+func TestConfigResolveNvidiaEnvKey(t *testing.T) {
+	t.Setenv("NVIDIA_API_KEY", "nv-from-env")
+	cfg := Config{Provider: "nvidia"}
+	cfg.resolve()
+	if cfg.APIKey != "nv-from-env" {
+		t.Errorf("api key: got %q, want %q", cfg.APIKey, "nv-from-env")
 	}
 }
 
@@ -413,5 +431,164 @@ func TestAskGeminiVisionSuccess(t *testing.T) {
 	}
 	if reply != "gemini vision reply" {
 		t.Errorf("reply: got %q, want %q", reply, "gemini vision reply")
+	}
+}
+
+// ── NVIDIA NIM ────────────────────────────────────────────────────────────────
+
+func TestAskNvidiaSuccess(t *testing.T) {
+	var gotAuth, gotPath string
+	var body map[string]interface{}
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		gotPath = r.URL.Path
+		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{
+					"content":           "nvidia reply",
+					"reasoning_content": "hidden chain of thought",
+				}},
+			},
+		})
+	})
+	defer cleanup()
+
+	reply, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{
+		Provider: "nvidia",
+		Model:    "moonshotai/kimi-k3",
+		APIKey:   "nv-test",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reply != "nvidia reply" {
+		t.Errorf("reply: got %q, want %q", reply, "nvidia reply")
+	}
+	if gotAuth != "Bearer nv-test" {
+		t.Errorf("Authorization: got %q", gotAuth)
+	}
+	if gotPath != "/v1/chat/completions" {
+		t.Errorf("path: got %q", gotPath)
+	}
+	if body["model"] != "moonshotai/kimi-k3" {
+		t.Errorf("model: got %v", body["model"])
+	}
+	if body["max_tokens"] != float64(4096) {
+		t.Errorf("max_tokens: got %v, want 4096", body["max_tokens"])
+	}
+	if body["temperature"] != 0.5 {
+		t.Errorf("temperature: got %v, want 0.5", body["temperature"])
+	}
+	if body["top_p"] != float64(1) {
+		t.Errorf("top_p: got %v, want 1", body["top_p"])
+	}
+	if body["reasoning_effort"] != "low" {
+		t.Errorf("reasoning_effort: got %v, want low", body["reasoning_effort"])
+	}
+}
+
+func TestAskNvidiaDeepSeekReasoningEffort(t *testing.T) {
+	var body map[string]interface{}
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{"content": "deepseek reply"}},
+			},
+		})
+	})
+	defer cleanup()
+
+	_, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{
+		Provider: "nvidia",
+		Model:    "deepseek-ai/deepseek-v4.1-flash",
+		APIKey:   "nv-test",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if body["reasoning_effort"] != float64(20) {
+		t.Errorf("reasoning_effort: got %v, want 20", body["reasoning_effort"])
+	}
+}
+
+func TestAskNvidiaLlamaOmitsReasoningEffort(t *testing.T) {
+	var body map[string]interface{}
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{"content": "llama reply"}},
+			},
+		})
+	})
+	defer cleanup()
+
+	_, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{
+		Provider: "nvidia",
+		Model:    "meta/llama-3.2-11b-vision-instruct",
+		APIKey:   "nv-test",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := body["reasoning_effort"]; ok {
+		t.Errorf("llama vision should omit reasoning_effort, got %v", body["reasoning_effort"])
+	}
+}
+
+func TestAskNvidiaVisionSuccess(t *testing.T) {
+	var body map[string]interface{}
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&body)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{"content": "nvidia vision reply"}},
+			},
+		})
+	})
+	defer cleanup()
+
+	reply, err := AskVision("base64img", Config{
+		Provider: "nvidia",
+		Model:    "meta/muse-glimmer-30b",
+		APIKey:   "nv-test",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if reply != "nvidia vision reply" {
+		t.Errorf("reply: got %q, want %q", reply, "nvidia vision reply")
+	}
+	if body["max_tokens"] != float64(8192) {
+		t.Errorf("max_tokens: got %v, want 8192", body["max_tokens"])
+	}
+	raw, err := json.Marshal(body["messages"])
+	if err != nil {
+		t.Fatalf("marshal messages: %v", err)
+	}
+	if !strings.Contains(string(raw), "data:image/png;base64,base64img") {
+		t.Errorf("vision payload missing image data url: %s", raw)
+	}
+}
+
+func TestAskNvidiaReasoningWithoutAnswer(t *testing.T) {
+	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"choices": []map[string]interface{}{
+				{"message": map[string]string{"reasoning_content": "still thinking"}},
+			},
+		})
+	})
+	defer cleanup()
+
+	_, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{
+		Provider: "nvidia",
+		Model:    "moonshotai/kimi-k3",
+		APIKey:   "nv-test",
+	})
+	if err == nil {
+		t.Fatal("expected error when the model returns reasoning and no answer")
 	}
 }

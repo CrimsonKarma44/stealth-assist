@@ -66,6 +66,7 @@ let modelTitle = '';
 function providerDisplayName(provider: string): string {
   switch (provider) {
     case 'openrouter': return 'OpenRouter';
+    case 'nvidia':     return 'NVIDIA';
     case 'google':     return 'Gemini';
     case 'xai':        return 'Grok';
     case 'openai':     return 'GPT';
