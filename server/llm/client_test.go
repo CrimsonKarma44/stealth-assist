@@ -477,39 +477,10 @@ func TestAskNvidiaSuccess(t *testing.T) {
 	if body["max_tokens"] != float64(4096) {
 		t.Errorf("max_tokens: got %v, want 4096", body["max_tokens"])
 	}
-	if body["temperature"] != 0.5 {
-		t.Errorf("temperature: got %v, want 0.5", body["temperature"])
-	}
-	if body["top_p"] != float64(1) {
-		t.Errorf("top_p: got %v, want 1", body["top_p"])
-	}
-	if body["reasoning_effort"] != "low" {
-		t.Errorf("reasoning_effort: got %v, want low", body["reasoning_effort"])
-	}
-}
-
-func TestAskNvidiaDeepSeekReasoningEffort(t *testing.T) {
-	var body map[string]interface{}
-	_, cleanup := withMockServer(func(w http.ResponseWriter, r *http.Request) {
-		json.NewDecoder(r.Body).Decode(&body)
-		json.NewEncoder(w).Encode(map[string]interface{}{
-			"choices": []map[string]interface{}{
-				{"message": map[string]string{"content": "deepseek reply"}},
-			},
-		})
-	})
-	defer cleanup()
-
-	_, err := AskLLM([]Message{{Role: "user", Content: "hi"}}, Config{
-		Provider: "nvidia",
-		Model:    "deepseek-ai/deepseek-v4.1-flash",
-		APIKey:   "nv-test",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if body["reasoning_effort"] != float64(20) {
-		t.Errorf("reasoning_effort: got %v, want 20", body["reasoning_effort"])
+	for _, key := range []string{"temperature", "top_p", "reasoning_effort"} {
+		if _, ok := body[key]; ok {
+			t.Errorf("nvidia request should omit %s, got %v", key, body[key])
+		}
 	}
 }
 

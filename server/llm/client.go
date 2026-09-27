@@ -342,33 +342,14 @@ func askNvidiaVision(imageBase64 string, cfg Config) (string, error) {
 	return askOpenAICompatibleVision(imageBase64, cfg, nvidiaChatURL, "nvidia", nil, nvidiaCallOpts(cfg, true))
 }
 
-func nvidiaCallOpts(cfg Config, vision bool) *openAICallOpts {
+// Match a plain chat completion. Extra sampling and reasoning fields are
+// rejected by some NVIDIA models and come back with no choices array.
+func nvidiaCallOpts(_ Config, vision bool) *openAICallOpts {
 	maxTokens := 4096
 	if vision {
 		maxTokens = 8192
 	}
-	temp := 0.5
-	topP := 1.0
-	return &openAICallOpts{
-		maxTokens:       maxTokens,
-		temperature:     &temp,
-		topP:            &topP,
-		reasoningEffort: nvidiaReasoningEffort(cfg.Model),
-	}
-}
-
-// Reasoning models spend the token budget before the answer. Keep effort low
-// so a screenshot still returns content. Llama 3.2 Vision has no reasoning
-// control. DeepSeek expects a number from 1 to 100; the others take low/medium/high.
-func nvidiaReasoningEffort(model string) any {
-	switch model {
-	case "deepseek-ai/deepseek-v4.1-flash":
-		return 20
-	case "meta/llama-3.2-90b-vision-instruct", "meta/llama-3.2-11b-vision-instruct":
-		return nil
-	default:
-		return "low"
-	}
+	return &openAICallOpts{maxTokens: maxTokens}
 }
 
 func openRouterHeaders() map[string]string {
